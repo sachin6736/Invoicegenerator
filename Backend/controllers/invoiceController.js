@@ -147,3 +147,32 @@ export const getSentInvoices = async (req, res) => {
     });
   }
 };
+
+// ... existing imports and exports ...
+
+export const getInvoiceById = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const invoice = await Invoice.findById(id).lean();
+
+    if (!invoice) {
+      return res.status(404).json({
+        success: false,
+        message: 'Invoice not found',
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      invoice,
+    });
+  } catch (error) {
+    console.error('Get invoice by ID error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch invoice',
+      error: error.message,
+    });
+  }
+};

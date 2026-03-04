@@ -3,8 +3,12 @@ import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { FileText, ChevronLeft, ChevronRight, CheckCircle, Clock } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+
+
 
 export default function Invoices() {
+  const navigate = useNavigate();
   const [invoices, setInvoices] = useState([]);
   const [pagination, setPagination] = useState({
     currentPage: 1,
@@ -118,7 +122,9 @@ export default function Invoices() {
             </thead>
             <tbody className="divide-y divide-gray-200">
               {invoices.map((invoice) => (
-                <tr key={invoice._id} className="hover:bg-gray-50">
+                <tr key={invoice._id}
+                      className="hover:bg-gray-50 cursor-pointer"
+                      onClick={() => navigate(`/invoices/${invoice._id}`)}>
                   <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900">
                     {invoice.invoiceNumber || '—'}
                   </td>
