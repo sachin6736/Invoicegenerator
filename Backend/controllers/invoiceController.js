@@ -1,7 +1,8 @@
 import Invoice from '../Models/Invoice.js';
 import { Resend } from 'resend';
 
-// Do NOT create Resend here at top-level
+
+// Do NOT create Resend at top-level
 let resendInstance = null;
 
 function getResend() {
@@ -15,82 +16,20 @@ function getResend() {
   return resendInstance;
 }
 
-
-export const createdraft = async (req, res) => {
-  try {
-    const invoice = new Invoice(req.body);
-    await invoice.save();
-
-    res.status(201).json({
-      success: true,
-      message: 'Draft saved successfully',
-      invoice,
-    });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error while saving draft',
-      error: error.message,
-    });
-  }
-};
-
-
 export const sendInvoice = async (req, res) => {
   try {
     const data = req.body;
 
-    // 1. Validate required fields (extra safety)
+    // 1. Validate required fields
     if (!data.client?.email) {
       return res.status(400).json({ success: false, message: 'Client email is required' });
     }
 
-    // 2. Create draft invoice FIRST (without number, status 'draft')
-    const draftInvoice = new Invoice({
-      ...data,
-      issueDate: new Date(),
-      status: 'draft',
-      // invoiceNumber: still undefined
-    });
-
-    await draftInvoice.save();
-    console.log(`Temporary draft created: ${draftInvoice._id}`);
-
-    // 3. Send email
-    const resend = getResend();
-
-    // Prepare HTML (use draftInvoice._id if needed, but no number yet)
-    const htmlContent = `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee;">
-        <h2 style="color: #1e40af;">Invoice (pending number)</h2>
-        <p>Dear ${data.client.name},</p>
-        <p>Thank you for your business. Here is your invoice:</p>
-        <!-- rest of your table and content -->
-        <p style="font-weight: bold; text-align: right; font-size: 1.3rem;">
-          Total: ₹${draftInvoice.totalAmount.toFixed(2)}
-        </p>
-        ${draftInvoice.notes ? `<p><strong>Notes:</strong> ${draftInvoice.notes}</p>` : ''}
-        <p>Thank you,<br>Your Company Name</p>
-      </div>
-    `;
-
-    const { data: emailData, error } = await resend.emails.send({
-      from: 'onboarding@resend.dev',
-      to: data.client.email,
-      subject: `Invoice from Your Company`,
-      html: htmlContent,
-      text: `Invoice from Your Company\n\nDear ${data.client.name},\n\nTotal: ₹${draftInvoice.totalAmount.toFixed(2)}\n\nThank you!`,
-    });
-
-    if (error) {
-      console.error('Email failed:', error);
-      // Delete the temporary draft since email failed
-      await Invoice.findByIdAndDelete(draftInvoice._id);
-      throw new Error(error.message || 'Failed to send email');
+    if (!data.totalAmount || data.totalAmount <= 0) {
+      return res.status(400).json({ success: false, message: 'Valid total amount is required' });
     }
 
-    // 4. Email succeeded → NOW generate number and finalize
+    // 2. Determine next invoice number
     const lastInvoice = await Invoice.findOne({ invoiceNumber: { $ne: null } })
       .sort({ invoiceNumber: -1 })
       .select('invoiceNumber')
@@ -104,38 +43,63 @@ export const sendInvoice = async (req, res) => {
 
     const invoiceNumber = `INV-${String(nextNum).padStart(4, '0')}`;
 
-    // Final update: assign number, set sent status
-    const finalInvoice = await Invoice.findByIdAndUpdate(
-      draftInvoice._id,
-      {
-        invoiceNumber,
-        sentAt: new Date(),
-        status: 'sent',
-        issueDate: new Date(),
-      },
-      { new: true }
-    );
+    // 3. Create the final invoice directly
+    const invoice = new Invoice({
+      ...data,
+      invoiceNumber,
+      issueDate: new Date(),
+      sentAt: new Date(),
+      status: 'sent',
+    });
 
-    console.log(`Invoice finalized: ${invoiceNumber}`);
+    await invoice.save();
+    console.log(`Invoice created and marked sent: ${invoiceNumber}`);
 
+    // 4. Send email
+    const resend = getResend();
+
+    const htmlContent = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee;">
+        <h2 style="color: #1e40af;">Invoice ${invoiceNumber}</h2>
+        <p>Dear ${data.client.name},</p>
+        <p>Thank you for your business. Here is your invoice:</p>
+        <!-- Add your invoice items table / details here -->
+        <p style="font-weight: bold; text-align: right; font-size: 1.3rem;">
+          Total: ₹${invoice.totalAmount.toFixed(2)}
+        </p>
+        ${invoice.notes ? `<p><strong>Notes:</strong> ${invoice.notes}</p>` : ''}
+        <p>Thank you,<br>Your Company Name</p>
+      </div>
+    `;
+
+    const { data: emailData, error } = await resend.emails.send({
+      from: 'onboarding@resend.dev', // ← change to your verified domain later
+      to: data.client.email,
+      subject: `Invoice ${invoiceNumber} from Your Company`,
+      html: htmlContent,
+      text: `Invoice ${invoiceNumber} from Your Company\n\nDear ${data.client.name},\n\nTotal: ₹${invoice.totalAmount.toFixed(2)}\n\nThank you!`,
+    });
+
+    if (error) {
+      console.error('Email sending failed:', error);
+
+      // Optional: delete the invoice if email critically fails
+      // (you may want to keep it and mark as "send failed" instead)
+      await Invoice.findByIdAndDelete(invoice._id);
+      console.log(`Removed invoice due to email failure: ${invoiceNumber}`);
+
+      throw new Error(error.message || 'Failed to send email');
+    }
+
+    // Success
     res.status(200).json({
       success: true,
       message: 'Invoice sent successfully',
-      invoice: finalInvoice,
+      invoice,
       emailId: emailData?.id,
     });
   } catch (error) {
     console.error('Send invoice error:', error);
-
-    // If something failed after draft save, try to clean up
-    if (draftInvoice && draftInvoice._id) {
-      try {
-        await Invoice.findByIdAndDelete(draftInvoice._id);
-        console.log(`Cleaned up failed draft: ${draftInvoice._id}`);
-      } catch (cleanupErr) {
-        console.error('Cleanup failed:', cleanupErr);
-      }
-    }
 
     res.status(500).json({
       success: false,
@@ -147,20 +111,16 @@ export const sendInvoice = async (req, res) => {
 
 export const getSentInvoices = async (req, res) => {
   try {
-    // Get query params (with defaults)
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
 
-    // Only sent & paid invoices
     const query = { status: { $in: ['sent', 'paid'] } };
 
-    // Get total count for pagination info
     const total = await Invoice.countDocuments(query);
 
-    // Fetch paginated results
     const invoices = await Invoice.find(query)
-      .sort({ sentAt: -1 }) // newest sent first
+      .sort({ sentAt: -1 }) // newest first
       .skip(skip)
       .limit(limit)
       .select('invoiceNumber client.name client.email issueDate sentAt totalAmount status')

@@ -15,9 +15,7 @@ export default function SendInvoice() {
   };
 
   const [formData, setFormData] = useState(initialFormData);
-
-  const [sendLoading, setSendLoading] = useState(false);
-  const [draftLoading, setDraftLoading] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const handleChange = (e, index = null) => {
     const { name, value } = e.target;
@@ -67,57 +65,12 @@ export default function SendInvoice() {
     setFormData(initialFormData);
   };
 
-  const handleSaveDraft = async (e) => {
-    e.preventDefault();
-    setDraftLoading(true);
-
-    if (!validateForm()) {
-      setDraftLoading(false);
-      return;
-    }
-
-    const draftData = {
-      client: {
-        name: formData.clientName.trim(),
-        email: formData.clientEmail.trim(),
-        phone: formData.clientPhone?.trim() || undefined,
-        address: formData.clientAddress?.trim() || undefined,
-      },
-      issueDate: new Date(),
-      items: formData.items.map((item) => ({
-        description: item.description.trim(),
-        amount: Number(item.amount),
-      })),
-      totalAmount,
-      notes: formData.notes?.trim() || undefined,
-      status: 'draft',
-    };
-
-    try {
-      const res = await fetch('http://localhost:5000/Invoice/createdraft', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(draftData),
-      });
-
-      const result = await res.json();
-      if (!res.ok) throw new Error(result.message || 'Failed to save draft');
-
-      toast.success('Draft saved successfully!');
-      resetForm(); // ← Clear the form here
-    } catch (err) {
-      toast.error(err.message || 'Error saving draft');
-    } finally {
-      setDraftLoading(false);
-    }
-  };
-
   const handleSendInvoice = async (e) => {
     e.preventDefault();
-    setSendLoading(true);
+    setLoading(true);
 
     if (!validateForm()) {
-      setSendLoading(false);
+      setLoading(false);
       return;
     }
 
@@ -135,8 +88,6 @@ export default function SendInvoice() {
       })),
       totalAmount,
       notes: formData.notes?.trim() || undefined,
-      status: 'sent',
-      sentAt: new Date(),
     };
 
     try {
@@ -153,11 +104,11 @@ export default function SendInvoice() {
       }
 
       toast.success(`Invoice ${result.invoice.invoiceNumber} sent successfully!`);
-      resetForm(); // ← Clear the form here too
+      resetForm();
     } catch (err) {
       toast.error(err.message || 'Error sending invoice');
     } finally {
-      setSendLoading(false);
+      setLoading(false);
     }
   };
 
@@ -174,7 +125,7 @@ export default function SendInvoice() {
         </button>
       </div>
 
-      <form className="space-y-10">
+      <form className="space-y-10" onSubmit={handleSendInvoice}>
         {/* Client Information */}
         <section className="bg-white p-7 rounded-2xl border border-gray-200 shadow-sm">
           <h2 className="text-xl font-semibold mb-6 text-gray-800">Client Information</h2>
@@ -300,7 +251,7 @@ export default function SendInvoice() {
           </div>
         </section>
 
-        {/* Notes & Buttons */}
+        {/* Notes & Send Button */}
         <section className="bg-white p-7 rounded-2xl border border-gray-200 shadow-sm">
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Notes / Payment Terms
@@ -314,23 +265,15 @@ export default function SendInvoice() {
             placeholder="Payment terms, thank you note, bank details, etc..."
           />
 
-          <div className="mt-10 flex flex-col sm:flex-row justify-end gap-4">
+          <div className="mt-10 flex justify-end">
             <button
-              type="button"
-              onClick={handleSaveDraft}
-              disabled={draftLoading}
-              className={`px-8 py-3 border border-gray-300 rounded-xl font-medium hover:bg-gray-50 transition ${draftLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+              type="submit"
+              disabled={loading}
+              className={`px-10 py-3.5 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition shadow-sm min-w-[180px] ${
+                loading ? 'opacity-60 cursor-not-allowed' : ''
+              }`}
             >
-              {draftLoading ? 'Saving Draft...' : 'Save as Draft'}
-            </button>
-
-            <button
-              type="button"
-              onClick={handleSendInvoice}
-              disabled={sendLoading}
-              className={`px-10 py-3.5 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition shadow-sm ${sendLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
-            >
-              {sendLoading ? 'Sending...' : 'Send Invoice'}
+              {loading ? 'Sending Invoice...' : 'Send Invoice'}
             </button>
           </div>
         </section>

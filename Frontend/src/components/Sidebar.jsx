@@ -14,9 +14,8 @@ import {
 } from 'lucide-react';
 
 const menuItems = [
-   { to: '/send', label: 'Send', icon: Send },
-   { to: '/invoices', label: 'Invoices', icon: FileText },
-  { to: '/dashboard', label: 'Drafts', icon: FilePen },
+  { to: '/send',     label: 'Send',     icon: Send },   // ← changed
+  { to: '/invoices', label: 'Invoices', icon: FileText },
   { to: '/customers', label: 'Customers', icon: UsersRound },
   { to: '/settings', label: 'Settings', icon: Settings },
 ];
