@@ -3,12 +3,11 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 
 export default function SendInvoice() {
-  // Define initial state as a constant so we can reuse it for reset
+  // Removed clientAddress from initial state
   const initialFormData = {
     clientName: '',
     clientEmail: '',
     clientPhone: '',
-    clientAddress: '',
     issueDate: new Date().toISOString().slice(0, 10),
     items: [{ description: '', amount: '' }],
     notes: '',
@@ -60,7 +59,6 @@ export default function SendInvoice() {
     return true;
   };
 
-  // Reset form to initial state
   const resetForm = () => {
     setFormData(initialFormData);
   };
@@ -79,7 +77,7 @@ export default function SendInvoice() {
         name: formData.clientName.trim(),
         email: formData.clientEmail.trim(),
         phone: formData.clientPhone?.trim() || undefined,
-        address: formData.clientAddress?.trim() || undefined,
+        // address field completely removed — no longer sent
       },
       issueDate: new Date(),
       items: formData.items.map((item) => ({
@@ -126,7 +124,7 @@ export default function SendInvoice() {
       </div>
 
       <form className="space-y-10" onSubmit={handleSendInvoice}>
-        {/* Client Information */}
+        {/* Client Information – removed address textarea */}
         <section className="bg-white p-7 rounded-2xl border border-gray-200 shadow-sm">
           <h2 className="text-xl font-semibold mb-6 text-gray-800">Client Information</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -158,7 +156,7 @@ export default function SendInvoice() {
               />
             </div>
 
-            <div>
+            <div className="md:col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-2">Phone</label>
               <input
                 type="tel"
@@ -168,22 +166,10 @@ export default function SendInvoice() {
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
               />
             </div>
-
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Address</label>
-              <textarea
-                name="clientAddress"
-                value={formData.clientAddress}
-                onChange={handleChange}
-                rows={3}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition resize-none min-h-[80px]"
-                placeholder="Street address, city, state, PIN code..."
-              />
-            </div>
           </div>
         </section>
 
-        {/* Items */}
+        {/* Items section remains unchanged */}
         <section className="bg-white p-7 rounded-2xl border border-gray-200 shadow-sm">
           <div className="flex flex-col sm:flex-row justify-between mb-6 gap-4">
             <h2 className="text-xl font-semibold text-gray-800">Items / Services</h2>
@@ -251,7 +237,7 @@ export default function SendInvoice() {
           </div>
         </section>
 
-        {/* Notes & Send Button */}
+        {/* Notes & Send Button – unchanged */}
         <section className="bg-white p-7 rounded-2xl border border-gray-200 shadow-sm">
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Notes / Payment Terms
