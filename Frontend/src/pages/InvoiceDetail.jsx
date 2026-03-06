@@ -4,6 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { ArrowLeft, FileText, Printer, Clock, CheckCircle } from 'lucide-react';
+const API = import.meta.env.VITE_API_URL;
 
 export default function InvoiceDetail() {
   const { id } = useParams(); // Get invoice ID from URL
@@ -18,7 +19,7 @@ export default function InvoiceDetail() {
     setError(null);
 
     try {
-      const res = await fetch(`http://localhost:5000/Invoice/${id}`);
+      const res = await fetch(`${API}/Invoice/${id}`);
       const data = await res.json();
 
       if (!res.ok) {

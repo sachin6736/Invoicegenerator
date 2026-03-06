@@ -1,11 +1,7 @@
-// ────────────────────────────────────────────────
-// MUST BE THE VERY FIRST LINES – BEFORE dotenv or ANY imports that might trigger MongoDB
 import { setServers } from 'node:dns/promises';
 
 setServers(['1.1.1.1', '1.0.0.1', '8.8.8.8', '8.8.4.4']);
-// Cloudflare first (fast/reliable), Google as backup
 
-// Now safe to load dotenv and everything else
 import dotenv from 'dotenv';
 dotenv.config();
 
@@ -14,12 +10,26 @@ import cors from "cors";
 import connectDB from "./config/db.js";
 import invoiceroutes from "./routes/invoiceroutes.js";
 
-// Now call connectDB() – DNS is already forced
 connectDB();
 
 const app = express();
 
-app.use(cors());
+const allowedOrigins = (process.env.FRONTEND_URLS || "")
+  .split(",")
+  .map(o => o.trim())
+  .filter(Boolean);
+
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error(`Not allowed by CORS: ${origin}`));
+    }
+  },
+  credentials: true
+}));
+
 app.use(express.json());
 
 app.use('/Invoice', invoiceroutes);

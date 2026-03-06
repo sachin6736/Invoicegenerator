@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { FileText, ChevronLeft, ChevronRight, CheckCircle, Clock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+const API = import.meta.env.VITE_API_URL;
 
 
 
@@ -24,7 +25,7 @@ export default function Invoices() {
     setError(null);
 
     try {
-      const res = await fetch(`http://localhost:5000/Invoice/sent?page=${page}&limit=10`);
+      const res = await fetch(`${API}/Invoice/sent?page=${page}&limit=10`);
       const data = await res.json();
 
       if (!res.ok) {

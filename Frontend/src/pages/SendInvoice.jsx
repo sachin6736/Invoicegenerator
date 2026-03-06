@@ -1,6 +1,7 @@
 // src/pages/SendInvoice.jsx
 import { useState } from 'react';
 import { toast } from 'sonner';
+const API = import.meta.env.VITE_API_URL;
 
 export default function SendInvoice() {
   // Removed clientAddress from initial state
@@ -89,7 +90,7 @@ export default function SendInvoice() {
     };
 
     try {
-      const res = await fetch('http://localhost:5000/Invoice/send', {
+      const res = await fetch(`${API}/Invoice/send`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(sendData),
