@@ -32,6 +32,8 @@ app.use(cors({
   credentials: true
 }));
 
+
+
 // ====================== OTHER MIDDLEWARE ======================
 app.use(express.json());
 
