@@ -1,11 +1,11 @@
 // src/pages/Invoices.jsx
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
-import { format } from 'date-fns';
-import { FileText, ChevronLeft, ChevronRight, CheckCircle, Clock } from 'lucide-react';
+import { format, isPast, parseISO } from 'date-fns'; // ← add isPast
+import { FileText, ChevronLeft, ChevronRight, CheckCircle, Clock, AlertTriangle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
-
+const API = import.meta.env.VITE_API_URL;
 
 export default function Invoices() {
   const navigate = useNavigate();
@@ -24,7 +24,7 @@ export default function Invoices() {
     setError(null);
 
     try {
-      const res = await fetch(`http://localhost:5000/Invoice/sent?page=${page}&limit=10`);
+      const res = await fetch(`${API}/Invoice/sent?page=${page}&limit=10`);
       const data = await res.json();
 
       if (!res.ok) {
@@ -49,6 +49,15 @@ export default function Invoices() {
     if (newPage >= 1 && newPage <= pagination.totalPages) {
       fetchInvoices(newPage);
     }
+  };
+
+  // Helper to determine display status
+  const getDisplayStatus = (invoice) => {
+    if (invoice.status === 'paid') return { text: 'Paid', color: 'green', icon: CheckCircle };
+    if (invoice.dueDate && isPast(parseISO(invoice.dueDate))) {
+      return { text: 'Overdue', color: 'red', icon: AlertTriangle };
+    }
+    return { text: 'Sent', color: 'blue', icon: Clock };
   };
 
   if (loading) {
@@ -88,7 +97,7 @@ export default function Invoices() {
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold text-gray-900">Sent Invoices</h1>
         <button
-          onClick={() => (window.location.href = '/send')}
+          onClick={() => navigate('/send')}  // better than window.location
           className="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium"
         >
           + New Invoice
@@ -110,6 +119,9 @@ export default function Invoices() {
                   Issue Date
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Due Date    {/* ← new column */}
+                </th>
+                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Sent Date
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -121,52 +133,60 @@ export default function Invoices() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {invoices.map((invoice) => (
-                <tr key={invoice._id}
-                      className="hover:bg-gray-50 cursor-pointer"
-                      onClick={() => navigate(`/invoices/${invoice._id}`)}>
-                  <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900">
-                    {invoice.invoiceNumber || '—'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">{invoice.client?.name || '—'}</div>
-                    <div className="text-sm text-gray-500">{invoice.client?.email || '—'}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {invoice.issueDate
-                      ? format(new Date(invoice.issueDate), 'dd MMM yyyy')
-                      : '—'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {invoice.sentAt
-                      ? format(new Date(invoice.sentAt), 'dd MMM yyyy, hh:mm a')
-                      : '—'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    ₹{invoice.totalAmount?.toFixed(2) || '0.00'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span
-                      className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
-                        invoice.status === 'sent'
-                          ? 'bg-blue-100 text-blue-800'
-                          : invoice.status === 'paid'
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-gray-100 text-gray-800'
-                      }`}
-                    >
-                      {invoice.status === 'sent' && <Clock size={14} className="mr-1" />}
-                      {invoice.status === 'paid' && <CheckCircle size={14} className="mr-1" />}
-                      {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
-                    </span>
-                  </td>
-                </tr>
-              ))}
+              {invoices.map((invoice) => {
+                const { text: statusText, color, icon: StatusIcon } = getDisplayStatus(invoice);
+
+                return (
+                  <tr
+                    key={invoice._id}
+                    className="hover:bg-gray-50 cursor-pointer"
+                    onClick={() => navigate(`/invoices/${invoice._id}`)}
+                  >
+                    <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900">
+                      {invoice.invoiceNumber || '—'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm font-medium text-gray-900">{invoice.client?.name || '—'}</div>
+                      <div className="text-sm text-gray-500">{invoice.client?.email || '—'}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {invoice.issueDate
+                        ? format(new Date(invoice.issueDate), 'dd MMM yyyy')
+                        : '—'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {invoice.dueDate
+                        ? format(new Date(invoice.dueDate), 'dd MMM yyyy')
+                        : '—'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {invoice.sentAt
+                        ? format(new Date(invoice.sentAt), 'dd MMM yyyy, hh:mm a')
+                        : '—'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      ₹{invoice.totalAmount?.toFixed(2) || '0.00'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span
+                        className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
+                          color === 'green' ? 'bg-green-100 text-green-800'
+                          : color === 'red'   ? 'bg-red-100 text-red-800'
+                          : 'bg-blue-100 text-blue-800'
+                        }`}
+                      >
+                        <StatusIcon size={14} className="mr-1" />
+                        {statusText}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
 
-        {/* Pagination Controls */}
+        {/* Pagination – unchanged */}
         <div className="px-6 py-4 flex items-center justify-between border-t border-gray-200 bg-gray-50">
           <div className="text-sm text-gray-700">
             Showing <span className="font-medium">{invoices.length}</span> of{' '}

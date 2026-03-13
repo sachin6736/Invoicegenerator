@@ -18,13 +18,13 @@ connectDB();
 
 const app = express();
 
-// ====================== CORS CONFIGURATION ======================
+// ====================== CORS CONFIGURATION (Best Version) ======================
 app.use(cors({
   origin: [
     "https://www.autopartsinvoices.xyz",
     "https://autopartsinvoices.xyz",
-    "https://invoicegenerator-six-khaki.vercel.app",
-    "http://localhost:5173",
+    "https://invoicegenerator-six-khaki.vercel.app",   // old Vercel domain
+    "http://localhost:5173",                           // Vite dev
     "http://localhost:3000"
   ],
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
