@@ -1,9 +1,8 @@
 // ────────────────────────────────────────────────
-// MUST BE THE VERY FIRST LINES – BEFORE dotenv or ANY imports that might trigger MongoDB
+// MUST BE THE VERY FIRST LINES – BEFORE dotenv or ANY imports
 import { setServers } from 'node:dns/promises';
 
 setServers(['1.1.1.1', '1.0.0.1', '8.8.8.8', '8.8.4.4']);
-// Cloudflare first (fast/reliable), Google as backup
 
 // Now safe to load dotenv and everything else
 import dotenv from 'dotenv';
@@ -14,16 +13,32 @@ import cors from "cors";
 import connectDB from "./config/db.js";
 import invoiceroutes from "./routes/invoiceroutes.js";
 
-// Now call connectDB() – DNS is already forced
+// Connect to MongoDB
 connectDB();
 
 const app = express();
 
-app.use(cors());
+// ====================== CORS CONFIGURATION ======================
+app.use(cors({
+  origin: [
+    "https://www.autopartsinvoices.xyz",
+    "https://autopartsinvoices.xyz",
+    "https://invoicegenerator-six-khaki.vercel.app",
+    "http://localhost:5173",
+    "http://localhost:3000"
+  ],
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: true
+}));
+
+// ====================== OTHER MIDDLEWARE ======================
 app.use(express.json());
 
+// ====================== ROUTES ======================
 app.use('/Invoice', invoiceroutes);
 
+// ====================== SERVER ======================
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
