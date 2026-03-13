@@ -4,7 +4,6 @@ import { toast } from 'sonner';
 const API = import.meta.env.VITE_API_URL;
 
 export default function SendInvoice() {
-  // Removed clientAddress from initial state
   const initialFormData = {
     clientName: '',
     clientEmail: '',
@@ -12,6 +11,7 @@ export default function SendInvoice() {
     issueDate: new Date().toISOString().slice(0, 10),
     items: [{ description: '', amount: '' }],
     notes: '',
+    currency: 'USD',  // Default to USD for US clients
   };
 
   const [formData, setFormData] = useState(initialFormData);
@@ -49,6 +49,10 @@ export default function SendInvoice() {
       toast.error('Client name and email are required');
       return false;
     }
+    if (!formData.currency) {
+      toast.error('Please select a currency');
+      return false;
+    }
     if (formData.items.some((item) => !item.description.trim() || !item.amount)) {
       toast.error('All items must have description and amount');
       return false;
@@ -78,7 +82,6 @@ export default function SendInvoice() {
         name: formData.clientName.trim(),
         email: formData.clientEmail.trim(),
         phone: formData.clientPhone?.trim() || undefined,
-        // address field completely removed — no longer sent
       },
       issueDate: new Date(),
       items: formData.items.map((item) => ({
@@ -87,6 +90,7 @@ export default function SendInvoice() {
       })),
       totalAmount,
       notes: formData.notes?.trim() || undefined,
+      currency: formData.currency,  // ← Now sent to backend
     };
 
     try {
@@ -125,7 +129,7 @@ export default function SendInvoice() {
       </div>
 
       <form className="space-y-10" onSubmit={handleSendInvoice}>
-        {/* Client Information – removed address textarea */}
+        {/* Client Information */}
         <section className="bg-white p-7 rounded-2xl border border-gray-200 shadow-sm">
           <h2 className="text-xl font-semibold mb-6 text-gray-800">Client Information</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -170,7 +174,31 @@ export default function SendInvoice() {
           </div>
         </section>
 
-        {/* Items section remains unchanged */}
+        {/* Currency Selection – NEW SECTION */}
+        <section className="bg-white p-7 rounded-2xl border border-gray-200 shadow-sm">
+          <h2 className="text-xl font-semibold mb-6 text-gray-800">Invoice Settings</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Currency <span className="text-red-500">*</span>
+              </label>
+              <select
+                name="currency"
+                value={formData.currency}
+                onChange={handleChange}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition bg-white"
+                required
+              >
+                <option value="USD">USD - US Dollar (recommended for US clients)</option>
+                <option value="AED">AED - UAE Dirham</option>
+                <option value="INR">INR - Indian Rupee</option>
+                {/* Add more currencies if needed */}
+              </select>
+            </div>
+          </div>
+        </section>
+
+        {/* Items */}
         <section className="bg-white p-7 rounded-2xl border border-gray-200 shadow-sm">
           <div className="flex flex-col sm:flex-row justify-between mb-6 gap-4">
             <h2 className="text-xl font-semibold text-gray-800">Items / Services</h2>
@@ -238,7 +266,7 @@ export default function SendInvoice() {
           </div>
         </section>
 
-        {/* Notes & Send Button – unchanged */}
+        {/* Notes & Send Button */}
         <section className="bg-white p-7 rounded-2xl border border-gray-200 shadow-sm">
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Notes / Payment Terms

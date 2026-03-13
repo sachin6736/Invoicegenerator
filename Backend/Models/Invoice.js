@@ -1,61 +1,82 @@
 import mongoose from 'mongoose';
 
-// models/Invoice.js
 const invoiceSchema = new mongoose.Schema({
   invoiceNumber: {
     type: String,
     unique: true,
-    sparse: true,
+    required: true,           // changed — now always required
   },
+
   issueDate: {
     type: Date,
-    default: Date.now,
+    required: true,
   },
-  dueDate: {           // ← NEW FIELD
+
+  dueDate: {
     type: Date,
-    // You can leave it without default — we'll set it in the controller
+    required: true,
   },
+
   status: {
     type: String,
-    enum: ["draft", "sent", "paid", "overdue"], // ← optionally add "overdue" later
-    default: "draft",
+    enum: ["sent", "paid", "overdue"],
+    default: "sent",
   },
+
   sentAt: {
     type: Date,
+    required: true,
   },
+
   paidAt: {
     type: Date,
   },
+
+  currency: {
+    type: String,
+    enum: ["USD", "AED", "INR", "EUR"],
+    default: "USD",
+    required: true,
+  },
+
+  // PayPal fields
+  paypalOrderId: String,
+  paypalCaptureId: String,
+
   client: {
     name: { type: String, required: true },
     email: { type: String, required: true },
     phone: { type: String },
-    address: { type: String }, // still exists in model — frontend just doesn't send it anymore
+    address: { type: String },
   },
+
   items: [
     {
       description: { type: String, required: true },
       amount: { type: Number, required: true, min: 0 },
     },
   ],
+
   totalAmount: {
     type: Number,
     required: true,
     min: 0,
   },
+
   notes: {
     type: String,
   },
+
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "User",
     required: false,
   },
+
   createdAt: {
     type: Date,
     default: Date.now,
   },
 });
 
-const Invoice = mongoose.model("Invoice", invoiceSchema);
-export default Invoice;
+export default mongoose.model("Invoice", invoiceSchema);

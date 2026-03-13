@@ -28,7 +28,11 @@ export const sendInvoice = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Valid total amount is required' });
     }
 
-    // 2. Determine next invoice number
+    // 2. Determine currency (default USD for US clients)
+    const currency = data.currency || 'USD';
+    const currencySymbol = currency === 'USD' ? '$' : currency === 'INR' ? '₹' : currency === 'AED' ? 'د.إ ' : currency;
+
+    // 3. Determine next invoice number
     const lastInvoice = await Invoice.findOne({ invoiceNumber: { $ne: null } })
       .sort({ invoiceNumber: -1 })
       .select('invoiceNumber')
@@ -41,12 +45,12 @@ export const sendInvoice = async (req, res) => {
     }
     const invoiceNumber = `INV-${String(nextNum).padStart(4, '0')}`;
 
-    // 3. Prepare dates
+    // 4. Prepare dates
     const issueDate = new Date();
     const dueDate = new Date(issueDate);
-    dueDate.setHours(dueDate.getHours() + 48);
+    dueDate.setHours(dueDate.getHours() + 48); // 48 hours from now
 
-    // 4. Create and save the invoice
+    // 5. Create and save the invoice
     const invoice = new Invoice({
       ...data,
       invoiceNumber,
@@ -54,64 +58,76 @@ export const sendInvoice = async (req, res) => {
       dueDate,
       sentAt: new Date(),
       status: 'sent',
+      currency, // ← saved from request (or default USD)
     });
 
     await invoice.save();
     console.log(`Invoice created and marked sent: ${invoiceNumber}`);
 
-    // 5. Generate PDF
+    // 6. Generate PDF
     const pdfBuffer = await generateInvoicePDF(invoice);
 
-    // 6. Prepare email content
-  const companyName = 'First Used Auto Parts';
-const amountDue = invoice.totalAmount.toFixed(2);
-const dueDateFormatted = new Date(invoice.dueDate).toLocaleDateString('en-US', {
-  year: 'numeric',
-  month: 'long',
-  day: 'numeric',
-});
+    // 7. Prepare email content
+    const companyName = 'First Used Auto Parts';
+    const amountDue = invoice.totalAmount.toFixed(2);
+    const dueDateFormatted = new Date(invoice.dueDate).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
 
-const htmlContent = `
-  <div style="font-family: Arial, Helvetica, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e5e7eb; border-radius: 8px;">
-    <h2 style="color: #1e40af; margin-bottom: 8px;">Invoice from ${companyName}</h2>
-    <p style="color: #374151; margin: 0 0 20px;">Dear ${invoice.client.name || 'Customer'},</p>
-    
-    <p style="color: #374151; margin: 0 0 16px;">
-      You have received a new invoice from <strong>${companyName}</strong>. 
-      Please find the invoice attached with this email for your reference.
-    </p>
-    
-    <div style="background: #f9fafb; padding: 16px; border-radius: 6px; margin-bottom: 20px;">
-      <p style="margin: 4px 0;"><strong>Invoice Number:</strong> ${invoice.invoiceNumber}</p>
-      <p style="margin: 4px 0;"><strong>Amount Due:</strong> $${amountDue}</p>
-      <p style="margin: 4px 0;"><strong>Due Date:</strong> ${dueDateFormatted}</p>
-    </div>
-    
-    <p style="margin: 0 0 20px;">
-      To complete the payment, please click the <strong>Pay Now</strong> button below:
-    </p>
-    
-    <div style="text-align: center; margin: 24px 0;">
-      <a href="#" style="background: #1e40af; color: white; padding: 12px 32px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">
-        Pay Now
-      </a>
-    </div>
-    
-    <p style="color: #374151; margin: 0 0 16px;">
-      Kindly ensure the payment is completed before the due date. 
-      If you have any questions regarding this invoice, please feel free to contact us.
-    </p>
-    
-    <p style="color: #374151; margin: 0;">
-      Thank you for your business.<br>
-      <strong>${companyName}</strong><br>
-      330 N Brand Blvd, STE 700, Glendale, California 91203<br>
-      +1 888-282-7476 | contact@firstusedautoparts.com
-    </p>
-  </div>
-`;
+    // IMPORTANT: Real payment link
+const frontendUrls = process.env.FRONTEND_URLS?.split(',') || [];
+const frontendBaseUrl = frontendUrls[0]?.trim() || 'http://localhost:5173'; // fallback
 
-const textContent = `
+const payNowUrl = `${frontendBaseUrl}/pay/${invoice._id}`;
+
+    const htmlContent = `
+      <div style="font-family: Arial, Helvetica, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e5e7eb; border-radius: 8px;">
+        <h2 style="color: #1e40af; margin-bottom: 8px;">Invoice from ${companyName}</h2>
+        <p style="color: #374151; margin: 0 0 20px;">Dear ${invoice.client.name || 'Customer'},</p>
+        
+        <p style="color: #374151; margin: 0 0 16px;">
+          You have received a new invoice from <strong>${companyName}</strong>. 
+          Please find the invoice attached with this email for your reference.
+        </p>
+        
+        <div style="background: #f9fafb; padding: 16px; border-radius: 6px; margin-bottom: 20px;">
+          <p style="margin: 4px 0;"><strong>Invoice Number:</strong> ${invoice.invoiceNumber}</p>
+          <p style="margin: 4px 0;"><strong>Amount Due:</strong> ${currencySymbol}${amountDue}</p>
+          <p style="margin: 4px 0;"><strong>Due Date:</strong> ${dueDateFormatted}</p>
+        </div>
+        
+        <p style="margin: 0 0 20px;">
+          To complete the payment securely, please click the button below:
+        </p>
+        
+        <div style="text-align: center; margin: 32px 0;">
+          <a href="${payNowUrl}"
+             style="background:#0070ba; color:white; padding:14px 40px; text-decoration:none; border-radius:8px; font-weight:bold; font-size:16px; display:inline-block; box-shadow:0 4px 12px rgba(0,0,0,0.15);">
+            Pay Now with PayPal
+          </a>
+        </div>
+        
+        <p style="color: #374151; margin: 0 0 16px; font-size: 14px;">
+          You will be redirected to a secure payment page powered by PayPal.
+        </p>
+        
+        <p style="color: #374151; margin: 0 0 16px;">
+          Kindly ensure the payment is completed before the due date. 
+          If you have any questions regarding this invoice, please feel free to contact us.
+        </p>
+        
+        <p style="color: #374151; margin: 0;">
+          Thank you for your business.<br>
+          <strong>${companyName}</strong><br>
+          330 N Brand Blvd, STE 700, Glendale, California 91203<br>
+          +1 888-282-7476 | contact@firstusedautoparts.com
+        </p>
+      </div>
+    `;
+
+    const textContent = `
 Invoice from ${companyName}
 
 Dear ${invoice.client.name || 'Customer'},
@@ -120,10 +136,11 @@ You have received a new invoice from ${companyName}.
 Please find the invoice attached for your reference.
 
 Invoice Number: ${invoice.invoiceNumber}
-Amount Due: $${amountDue}
+Amount Due: ${currencySymbol}${amountDue}
 Due Date: ${dueDateFormatted}
 
-To complete the payment, please click the Pay Now link (or view attachment).
+To complete the payment, visit this link:
+${payNowUrl}
 
 Kindly ensure payment is completed before the due date.
 If you have any questions, feel free to contact us.
@@ -134,15 +151,15 @@ ${companyName}
 Glendale, California 91203
 +1 888-282-7476
 contact@firstusedautoparts.com
-`.trim();
+    `.trim();
 
-    // 7. Send email with PDF attachment
+    // 8. Send email with PDF attachment
     const resend = getResend();
 
     const { data: emailData, error } = await resend.emails.send({
-      from: 'onboarding@resend.dev', // ← Replace with your verified domain later
+      from: 'onboarding@resend.dev', // ← Replace with your verified domain in production!
       to: data.client.email,
-      subject: `Invoice ${invoiceNumber} from Your Company`,
+      subject: `Invoice ${invoiceNumber} from ${companyName}`,
       html: htmlContent,
       text: textContent,
       attachments: [
@@ -156,18 +173,18 @@ contact@firstusedautoparts.com
 
     if (error) {
       console.error('Email sending failed:', error);
-      // Optional: you could mark invoice as "send-failed" instead of deleting
+      // Optional: mark invoice as failed instead of deleting
       // await Invoice.findByIdAndUpdate(invoice._id, { status: 'send-failed' });
-      throw new Error(error.message || 'Failed to send email');
+      throw new Error(error.message || 'Failed to send email with attachment');
     }
 
-    // 8. Success response
+    // 9. Success response
     res.status(200).json({
       success: true,
       message: 'Invoice sent successfully with PDF attachment',
       invoice: {
         ...invoice.toObject(),
-        dueDate: dueDate.toISOString(), // ensure frontend gets clean date
+        dueDate: dueDate.toISOString(),
       },
       emailId: emailData?.id,
     });

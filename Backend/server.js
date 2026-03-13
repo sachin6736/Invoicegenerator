@@ -9,6 +9,7 @@ import express from "express";
 import cors from "cors";
 import connectDB from "./config/db.js";
 import invoiceroutes from "./routes/invoiceroutes.js";
+import paypalroutes from "./routes/paypalroutes.js"
 
 connectDB();
 
@@ -33,6 +34,7 @@ app.use(cors({
 app.use(express.json());
 
 app.use('/Invoice', invoiceroutes);
+app.use('/Payment', paypalroutes);
 
 const PORT = process.env.PORT || 5000;
 
