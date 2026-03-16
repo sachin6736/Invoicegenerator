@@ -1,17 +1,17 @@
 // src/App.jsx
 import { Routes, Route } from 'react-router-dom';
-import AppLayout from './components/AppLayout'; 
+import AppLayout from './components/AppLayout';
 
 import SendInvoice from './pages/SendInvoice';
 import Invoices from './pages/Invoices';
 import InvoiceDetail from './pages/InvoiceDetail';
-import PayInvoice from './pages/PayInvoice';  // your payment page
+import PayInvoice from './pages/PayInvoice';
+import PaymentSuccess from './pages/PaymentSuccess';  // ← add this import
 
 export default function App() {
   return (
     <Routes>
-
-      {/* Protected pages — with sidebar/layout */}
+      {/* Pages with sidebar */}
       <Route element={<AppLayout />}>
         <Route path="send" element={<SendInvoice />} />
         <Route path="invoices" element={<Invoices />} />
@@ -19,12 +19,11 @@ export default function App() {
         <Route index element={<SendInvoice />} />
       </Route>
 
-      {/* Standalone payment page — NO layout/sidebar */}
+      {/* Standalone pages — no sidebar */}
       <Route path="/pay/:id" element={<PayInvoice />} />
+      <Route path="/payment-success" element={<PaymentSuccess />} />
 
-      {/* Fallback */}
       <Route path="*" element={<div className="p-8 text-center">Page not found</div>} />
-
     </Routes>
   );
 }
