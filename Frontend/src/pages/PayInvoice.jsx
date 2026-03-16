@@ -84,12 +84,6 @@ export default function PayInvoice() {
           <p className="text-gray-600 mb-10">
             A receipt was sent to your email at the time of payment.
           </p>
-          <button
-            onClick={() => navigate('/')}
-            className="px-10 py-4 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition font-medium shadow-md"
-          >
-            Return to Website
-          </button>
         </div>
       </div>
     );
