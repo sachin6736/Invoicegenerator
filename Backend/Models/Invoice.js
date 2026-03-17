@@ -4,7 +4,7 @@ const invoiceSchema = new mongoose.Schema({
   invoiceNumber: {
     type: String,
     unique: true,
-    required: true,           // changed — now always required
+    required: true,
   },
 
   issueDate: {
@@ -32,9 +32,9 @@ const invoiceSchema = new mongoose.Schema({
     type: Date,
   },
 
+  // Currency is now fixed → no enum, no flexibility
   currency: {
     type: String,
-    enum: ["USD", "AED", "INR", "EUR"],
     default: "USD",
     required: true,
   },

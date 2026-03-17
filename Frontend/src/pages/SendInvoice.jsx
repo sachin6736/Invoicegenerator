@@ -11,7 +11,7 @@ export default function SendInvoice() {
     issueDate: new Date().toISOString().slice(0, 10),
     items: [{ description: '', amount: '' }],
     notes: '',
-    currency: 'USD',  // Default to USD for US clients
+    // currency removed
   };
 
   const [formData, setFormData] = useState(initialFormData);
@@ -47,10 +47,6 @@ export default function SendInvoice() {
   const validateForm = () => {
     if (!formData.clientName.trim() || !formData.clientEmail.trim()) {
       toast.error('Client name and email are required');
-      return false;
-    }
-    if (!formData.currency) {
-      toast.error('Please select a currency');
       return false;
     }
     if (formData.items.some((item) => !item.description.trim() || !item.amount)) {
@@ -90,7 +86,7 @@ export default function SendInvoice() {
       })),
       totalAmount,
       notes: formData.notes?.trim() || undefined,
-      currency: formData.currency,  // ← Now sent to backend
+      // currency removed — backend will force USD
     };
 
     try {
@@ -174,30 +170,6 @@ export default function SendInvoice() {
           </div>
         </section>
 
-        {/* Currency Selection – NEW SECTION */}
-        <section className="bg-white p-7 rounded-2xl border border-gray-200 shadow-sm">
-          <h2 className="text-xl font-semibold mb-6 text-gray-800">Invoice Settings</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Currency <span className="text-red-500">*</span>
-              </label>
-              <select
-                name="currency"
-                value={formData.currency}
-                onChange={handleChange}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition bg-white"
-                required
-              >
-                <option value="USD">USD - US Dollar (recommended for US clients)</option>
-                <option value="AED">AED - UAE Dirham</option>
-                <option value="INR">INR - Indian Rupee</option>
-                {/* Add more currencies if needed */}
-              </select>
-            </div>
-          </div>
-        </section>
-
         {/* Items */}
         <section className="bg-white p-7 rounded-2xl border border-gray-200 shadow-sm">
           <div className="flex flex-col sm:flex-row justify-between mb-6 gap-4">
@@ -261,7 +233,7 @@ export default function SendInvoice() {
 
           <div className="mt-8 text-right">
             <p className="text-xl font-semibold text-gray-900">
-              Total: <span className="text-3xl font-bold text-blue-700">₹{totalAmount.toFixed(2)}</span>
+              Total: <span className="text-3xl font-bold text-blue-700">${totalAmount.toFixed(2)}</span>
             </p>
           </div>
         </section>

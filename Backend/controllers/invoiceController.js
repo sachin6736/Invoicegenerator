@@ -28,9 +28,9 @@ export const sendInvoice = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Valid total amount is required' });
     }
 
-    // 2. Determine currency (default USD for US clients)
-    const currency = data.currency || 'USD';
-    const currencySymbol = currency === 'USD' ? '$' : currency === 'INR' ? '₹' : currency === 'AED' ? 'د.إ ' : currency;
+    // 2. Currency is fixed to USD
+    const currency = 'USD';
+    const currencySymbol = '$';
 
     // 3. Determine next invoice number
     const lastInvoice = await Invoice.findOne({ invoiceNumber: { $ne: null } })
@@ -58,16 +58,13 @@ export const sendInvoice = async (req, res) => {
       dueDate,
       sentAt: new Date(),
       status: 'sent',
-      currency, // ← saved from request (or default USD)
+      currency,
     });
 
     await invoice.save();
     console.log(`Invoice created and marked sent: ${invoiceNumber}`);
 
-    // 6. Generate PDF
-    const pdfBuffer = await generateInvoicePDF(invoice);
-
-    // 7. Prepare email content
+    // 6. Prepare email content
     const companyName = 'First Used Auto Parts';
     const amountDue = invoice.totalAmount.toFixed(2);
     const dueDateFormatted = new Date(invoice.dueDate).toLocaleDateString('en-US', {
@@ -76,28 +73,60 @@ export const sendInvoice = async (req, res) => {
       day: 'numeric',
     });
 
-    // IMPORTANT: Real payment link
-const frontendUrls = process.env.FRONTEND_URLS?.split(',') || [];
-const frontendBaseUrl = frontendUrls[0]?.trim() || 'http://localhost:5173'; // fallback
+    // Build items list for email
+    const itemsListHtml = invoice.items
+      .map(
+        (item) => `
+          <tr>
+            <td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${item.description}</td>
+            <td style="padding: 8px; border-bottom: 1px solid #e5e7eb; text-align: right;">${currencySymbol}${Number(item.amount).toFixed(2)}</td>
+          </tr>
+        `
+      )
+      .join('');
 
-const payNowUrl = `${frontendBaseUrl}/pay/${invoice._id}`;
+    const itemsListText = invoice.items
+      .map((item) => `  • ${item.description}: ${currencySymbol}${Number(item.amount).toFixed(2)}`)
+      .join('\n');
 
+    // Real payment link
+    const frontendUrls = process.env.FRONTEND_URLS?.split(',') || [];
+    const frontendBaseUrl = frontendUrls[0]?.trim() || 'http://localhost:5173';
+    const payNowUrl = `${frontendBaseUrl}/pay/${invoice._id}`;
+
+    // HTML email
     const htmlContent = `
       <div style="font-family: Arial, Helvetica, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e5e7eb; border-radius: 8px;">
         <h2 style="color: #1e40af; margin-bottom: 8px;">Invoice from ${companyName}</h2>
         <p style="color: #374151; margin: 0 0 20px;">Dear ${invoice.client.name || 'Customer'},</p>
         
         <p style="color: #374151; margin: 0 0 16px;">
-          You have received a new invoice from <strong>${companyName}</strong>. 
-          Please find the invoice attached with this email for your reference.
+          You have received a new invoice from <strong>${companyName}</strong>.
         </p>
-        
+
         <div style="background: #f9fafb; padding: 16px; border-radius: 6px; margin-bottom: 20px;">
           <p style="margin: 4px 0;"><strong>Invoice Number:</strong> ${invoice.invoiceNumber}</p>
           <p style="margin: 4px 0;"><strong>Amount Due:</strong> ${currencySymbol}${amountDue}</p>
           <p style="margin: 4px 0;"><strong>Due Date:</strong> ${dueDateFormatted}</p>
         </div>
-        
+
+        <p style="margin: 0 0 12px; font-weight: 600;">Invoice Items:</p>
+        <table style="width: 100%; border-collapse: collapse;">
+          <thead>
+            <tr style="background: #f3f4f6;">
+              <th style="padding: 10px; text-align: left; border-bottom: 2px solid #d1d5db;">Description</th>
+              <th style="padding: 10px; text-align: right; border-bottom: 2px solid #d1d5db;">Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${itemsListHtml}
+          </tbody>
+        </table>
+
+        <p style="margin: 20px 0 20px; font-weight: bold; text-align: right; font-size: 1.1em;">
+          Total Due: ${currencySymbol}${amountDue}
+        </p>
+
         <p style="margin: 0 0 20px;">
           To complete the payment securely, please click the button below:
         </p>
@@ -127,17 +156,22 @@ const payNowUrl = `${frontendBaseUrl}/pay/${invoice._id}`;
       </div>
     `;
 
+    // Plain text version
     const textContent = `
 Invoice from ${companyName}
 
 Dear ${invoice.client.name || 'Customer'},
 
 You have received a new invoice from ${companyName}.
-Please find the invoice attached for your reference.
 
 Invoice Number: ${invoice.invoiceNumber}
-Amount Due: ${currencySymbol}${amountDue}
-Due Date: ${dueDateFormatted}
+Amount Due:    ${currencySymbol}${amountDue}
+Due Date:      ${dueDateFormatted}
+
+Invoice Items:
+${itemsListText}
+
+Total Due: ${currencySymbol}${amountDue}
 
 To complete the payment, visit this link:
 ${payNowUrl}
@@ -153,35 +187,27 @@ Glendale, California 91203
 contact@firstusedautoparts.com
     `.trim();
 
-    // 8. Send email with PDF attachment
+    // 7. Send email (no attachment)
     const resend = getResend();
 
     const { data: emailData, error } = await resend.emails.send({
-      from: 'onboarding@resend.dev', // ← Replace with your verified domain in production!
+      from: 'onboarding@resend.dev', // ← Replace with your verified domain in production
       to: data.client.email,
       subject: `Invoice ${invoiceNumber} from ${companyName}`,
       html: htmlContent,
       text: textContent,
-      attachments: [
-        {
-          content: pdfBuffer.toString('base64'),
-          filename: `Invoice_${invoiceNumber}.pdf`,
-          contentType: 'application/pdf',
-        },
-      ],
+      // attachments: []  ← removed completely
     });
 
     if (error) {
       console.error('Email sending failed:', error);
-      // Optional: mark invoice as failed instead of deleting
-      // await Invoice.findByIdAndUpdate(invoice._id, { status: 'send-failed' });
-      throw new Error(error.message || 'Failed to send email with attachment');
+      throw new Error(error.message || 'Failed to send email');
     }
 
-    // 9. Success response
+    // 8. Success response
     res.status(200).json({
       success: true,
-      message: 'Invoice sent successfully with PDF attachment',
+      message: 'Invoice sent successfully',
       invoice: {
         ...invoice.toObject(),
         dueDate: dueDate.toISOString(),
@@ -198,7 +224,6 @@ contact@firstusedautoparts.com
     });
   }
 };
-
 export const getSentInvoices = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
