@@ -65,7 +65,7 @@ export const sendInvoice = async (req, res) => {
     console.log(`Invoice created and marked sent: ${invoiceNumber}`);
 
     // 6. Prepare email content
-    const companyName = 'First Used Auto Parts';
+    const companyName = 'Auto parts store';
     const amountDue = invoice.totalAmount.toFixed(2);
     const dueDateFormatted = new Date(invoice.dueDate).toLocaleDateString('en-US', {
       year: 'numeric',
@@ -150,8 +150,6 @@ export const sendInvoice = async (req, res) => {
         <p style="color: #374151; margin: 0;">
           Thank you for your business.<br>
           <strong>${companyName}</strong><br>
-          330 N Brand Blvd, STE 700, Glendale, California 91203<br>
-          +1 888-282-7476 | contact@firstusedautoparts.com
         </p>
       </div>
     `;
@@ -181,17 +179,13 @@ If you have any questions, feel free to contact us.
 
 Thank you for your business!
 ${companyName}
-330 N Brand Blvd, STE 700
-Glendale, California 91203
-+1 888-282-7476
-contact@firstusedautoparts.com
     `.trim();
 
     // 7. Send email (no attachment)
     const resend = getResend();
 
     const { data: emailData, error } = await resend.emails.send({
-      from: 'First Used Auto Parts <no-reply@autopartsinvoices.xyz>',
+      from: 'Auto parts store <no-reply@autopartsinvoices.xyz>',
       to: data.client.email,
       subject: `Invoice ${invoiceNumber} from ${companyName}`,
       html: htmlContent,
