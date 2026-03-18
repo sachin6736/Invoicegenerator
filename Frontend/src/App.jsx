@@ -7,6 +7,7 @@ import Invoices from './pages/Invoices';
 import InvoiceDetail from './pages/InvoiceDetail';
 import PayInvoice from './pages/PayInvoice';
 import PaymentSuccess from './pages/PaymentSuccess';  // ← add this import
+import PaidInvoices from './pages/PaidInvoices';
 
 export default function App() {
   return (
@@ -16,6 +17,7 @@ export default function App() {
         <Route path="send" element={<SendInvoice />} />
         <Route path="invoices" element={<Invoices />} />
         <Route path="/invoices/:id" element={<InvoiceDetail />} />
+        <Route path="paid-invoices" element={<PaidInvoices />} />
         <Route index element={<SendInvoice />} />
       </Route>
 

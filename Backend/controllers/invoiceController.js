@@ -191,7 +191,7 @@ contact@firstusedautoparts.com
     const resend = getResend();
 
     const { data: emailData, error } = await resend.emails.send({
-      from: 'onboarding@resend.dev', // ← Replace with your verified domain in production
+      from: 'First Used Auto Parts <no-reply@autopartsinvoices.xyz>',
       to: data.client.email,
       subject: `Invoice ${invoiceNumber} from ${companyName}`,
       html: htmlContent,
@@ -289,6 +289,47 @@ export const getInvoiceById = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to fetch invoice',
+      error: error.message,
+    });
+  }
+};
+
+export const getPaidInvoices = async (req, res) => {
+  try {
+    const page  = parseInt(req.query.page)  || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip  = (page - 1) * limit;
+
+    const query = { status: "paid" };
+
+    const total = await Invoice.countDocuments(query);
+
+    const invoices = await Invoice.find(query)
+      .sort({ paidAt: -1 })           // most recently paid first
+      .skip(skip)
+      .limit(limit)
+      .select(
+        'invoiceNumber client.name client.email issueDate sentAt paidAt totalAmount status dueDate'
+      )
+      .lean();
+
+    res.status(200).json({
+      success: true,
+      invoices,
+      pagination: {
+        currentPage: page,
+        totalPages: Math.ceil(total / limit),
+        totalItems: total,
+        itemsPerPage: limit,
+        hasNextPage: page < Math.ceil(total / limit),
+        hasPrevPage: page > 1,
+      },
+    });
+  } catch (error) {
+    console.error('Fetch paid invoices error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch paid invoices',
       error: error.message,
     });
   }

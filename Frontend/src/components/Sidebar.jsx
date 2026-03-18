@@ -10,14 +10,14 @@ import {
   LogOut,
   Menu,
   X,
-  FilePen 
+  FilePen,
+  CheckCircle
 } from 'lucide-react';
 
 const menuItems = [
   { to: '/send',     label: 'Send',     icon: Send },   // ← changed
   { to: '/invoices', label: 'Invoices', icon: FileText },
-  { to: '/customers', label: 'Customers', icon: UsersRound },
-  { to: '/settings', label: 'Settings', icon: Settings },
+  { to: '/paid-invoices', label: 'Paid',       icon: CheckCircle },
 ];
 
 export default function Sidebar() {
@@ -76,14 +76,14 @@ export default function Sidebar() {
         </nav>
 
         {/* Logout at bottom */}
-        <div className="absolute bottom-6 left-0 right-0 px-3">
+        {/* <div className="absolute bottom-6 left-0 right-0 px-3">
           <button
             className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-gray-300 hover:bg-gray-800 hover:text-white transition-colors"
           >
             <LogOut size={20} />
             Logout
           </button>
-        </div>
+        </div> */}
       </aside>
 
       {/* Mobile overlay */}
