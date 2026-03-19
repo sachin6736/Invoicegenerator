@@ -134,7 +134,7 @@ export const sendInvoice = async (req, res) => {
         <div style="text-align: center; margin: 32px 0;">
           <a href="${payNowUrl}"
              style="background:#0070ba; color:white; padding:14px 40px; text-decoration:none; border-radius:8px; font-weight:bold; font-size:16px; display:inline-block; box-shadow:0 4px 12px rgba(0,0,0,0.15);">
-            Pay Now with PayPal
+            Pay Now
           </a>
         </div>
         
