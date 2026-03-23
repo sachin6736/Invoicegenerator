@@ -14,16 +14,19 @@
   "dependencies": {
     "@paypal/checkout-server-sdk": "^1.0.3",
     "@sendgrid/mail": "^8.1.6",
+    "bcryptjs": "^3.0.3",
     "cors": "^2.8.6",
     "dotenv": "^17.3.1",
     "express": "^5.2.1",
     "font-awesome": "^4.7.0",
+    "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.2.3",
     "pdfkit": "^0.17.2",
     "pdfkit-table": "^0.1.99",
     "resend": "^6.9.3"
   },
   "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
     "nodemon": "^3.1.14"
   }
 }
