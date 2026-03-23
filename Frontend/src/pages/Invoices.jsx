@@ -165,7 +165,7 @@ export default function Invoices() {
                         : '—'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      ₹{invoice.totalAmount?.toFixed(2) || '0.00'}
+                      $ {invoice.totalAmount?.toFixed(2) || '0.00'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span

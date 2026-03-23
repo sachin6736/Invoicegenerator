@@ -1,7 +1,7 @@
-// src/pages/PayInvoice.jsx
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { PayPalScriptProvider, PayPalButtons } from '@paypal/react-paypal-js';
+import { toast } from 'sonner'; // assuming you're using sonner
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -34,7 +34,6 @@ export default function PayInvoice() {
       });
   }, [id]);
 
-  // Loading state
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -46,7 +45,6 @@ export default function PayInvoice() {
     );
   }
 
-  // Error / invalid link
   if (error || !invoice) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
@@ -69,7 +67,6 @@ export default function PayInvoice() {
     );
   }
 
-  // Already paid
   if (invoice.status === 'paid') {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
@@ -89,7 +86,6 @@ export default function PayInvoice() {
     );
   }
 
-  // Active payment page
   const getCurrencySymbol = (cur) => {
     switch (cur) {
       case 'USD': return '$';
@@ -127,62 +123,65 @@ export default function PayInvoice() {
           <PayPalScriptProvider options={{
             clientId: import.meta.env.VITE_PAYPAL_CLIENT_ID,
             currency: invoice.currency || "USD",
+            intent: "capture",           // ← added
+            environment: "live",         // ← added (optional but explicit)
           }}>
-            <PayPalButtons
-              style={{ 
-                layout: "vertical", 
-                color: "blue", 
-                shape: "rect", 
-                label: "pay",
-                height: 48
-              }}
-              createOrder={async () => {
-                try {
-                  const res = await fetch(`${API}/Payment/paypal/create-order`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ invoiceId: invoice._id })
-                  });
-
-                  const data = await res.json();
-                  if (!res.ok) throw new Error(data.message || 'Failed to create order');
-                  return data.orderId;
-                } catch (err) {
-                  console.error(err);
-                  throw err;
-                }
-              }}
-              onApprove={async (data) => {
-                try {
-                  const res = await fetch(
-                    `${API}/Payment/paypal/capture/${data.orderID}`,
-                    { method: 'POST' }
-                  );
-
-                  const result = await res.json();
-
-                  if (result.success) {
-                    // Redirect to clean success page with invoice info
-                    navigate('/payment-success', {
-                      state: {
-                        invoiceNumber: invoice.invoiceNumber,
-                        amount: invoice.totalAmount,
-                        currency: invoice.currency
-                      }
+            <div id="paypal-button-container" className="min-h-[200px] flex items-center justify-center">
+              <PayPalButtons
+                style={{ 
+                  layout: "vertical", 
+                  color: "blue", 
+                  shape: "rect", 
+                  label: "pay",
+                  height: 48
+                }}
+                createOrder={async () => {
+                  try {
+                    const res = await fetch(`${API}/Payment/paypal/create-order`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ invoiceId: invoice._id })
                     });
-                  } else {
-                    alert('Payment capture failed. Please contact support.');
+
+                    const data = await res.json();
+                    if (!res.ok) throw new Error(data.message || 'Failed to create order');
+                    return data.orderId;
+                  } catch (err) {
+                    console.error(err);
+                    throw err;
                   }
-                } catch (err) {
-                  console.error(err);
-                  alert('Something went wrong during payment processing.');
-                }
-              }}
-              onError={(err) => {
-                console.error('PayPal Error:', err);
-                alert('Payment could not be processed. Please try again or contact support.');
-              }}
-            />
+                }}
+                onApprove={async (data) => {
+                  try {
+                    const res = await fetch(
+                      `${API}/Payment/paypal/capture/${data.orderID}`,
+                      { method: 'POST' }
+                    );
+
+                    const result = await res.json();
+
+                    if (result.success) {
+                      navigate('/payment-success', {
+                        state: {
+                          invoiceNumber: invoice.invoiceNumber,
+                          amount: invoice.totalAmount,
+                          currency: invoice.currency
+                        }
+                      });
+                    } else {
+                      toast.error('Payment capture failed. Please contact support.');
+                    }
+                  } catch (err) {
+                    console.error(err);
+                    toast.error('Something went wrong during payment processing.');
+                  }
+                }}
+                onError={(err) => {
+                  console.error('PayPal Error:', err);
+                  toast.error('Payment could not be processed. Please try again or contact support.');
+                }}
+              />
+            </div>
           </PayPalScriptProvider>
         </div>
 
