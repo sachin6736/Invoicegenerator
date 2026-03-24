@@ -4,11 +4,14 @@ import { toast } from 'sonner';
 import { format, parseISO } from 'date-fns';
 import { FileText, ChevronLeft, ChevronRight, CheckCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';   // ← Added
 
 const API = import.meta.env.VITE_API_URL;
 
 export default function PaidInvoices() {
   const navigate = useNavigate();
+  const { token } = useAuth();     // ← Get token from AuthContext
+
   const [invoices, setInvoices] = useState([]);
   const [pagination, setPagination] = useState({
     currentPage: 1,
@@ -20,14 +23,30 @@ export default function PaidInvoices() {
   const [error, setError] = useState(null);
 
   const fetchPaidInvoices = async (page = 1) => {
+    if (!token) {
+      setError("Please login to view paid invoices");
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
     try {
-      const res = await fetch(`${API}/Invoice/paid?page=${page}&limit=10`);
+      const res = await fetch(`${API}/Invoice/paid?page=${page}&limit=10`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`   // ← Token added here
+        }
+      });
+
       const data = await res.json();
 
       if (!res.ok) {
+        if (res.status === 401) {
+          throw new Error('Session expired. Please login again.');
+        }
         throw new Error(data.message || 'Failed to fetch paid invoices');
       }
 
@@ -43,7 +62,7 @@ export default function PaidInvoices() {
 
   useEffect(() => {
     fetchPaidInvoices(1);
-  }, []);
+  }, [token]);   // ← Re-fetch when token changes
 
   const handlePageChange = (newPage) => {
     if (newPage >= 1 && newPage <= pagination.totalPages) {

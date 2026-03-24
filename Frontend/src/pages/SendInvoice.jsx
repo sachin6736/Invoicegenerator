@@ -1,8 +1,13 @@
+// src/pages/SendInvoice.jsx
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { useAuth } from '../context/AuthContext';   // ← Added
+
 const API = import.meta.env.VITE_API_URL;
 
 export default function SendInvoice() {
+  const { token } = useAuth();   // ← Get token from AuthContext
+
   const initialFormData = {
     clientName: '',
     clientEmail: '',
@@ -87,24 +92,30 @@ export default function SendInvoice() {
     };
 
     try {
-      // 1. Save invoice to backend (no email sent)
+      // 1. Save invoice to backend (protected route)
       const res = await fetch(`${API}/Invoice/send`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`   // ← Token added here
+        },
         body: JSON.stringify(sendData),
       });
 
       const result = await res.json();
 
       if (!res.ok) {
+        if (res.status === 401) {
+          throw new Error('Session expired. Please login again.');
+        }
         throw new Error(result.message || 'Failed to create invoice');
       }
 
       const invoice = result.invoice;
       const invoiceNumber = invoice.invoiceNumber;
-      const payNowUrl = `https://www.autopartsinvoices.xyz/pay/${invoice._id}`; // Use current origin (better than env for production)
+      const payNowUrl = `https://www.autopartsinvoices.xyz/pay/${invoice._id}`;
 
-      // 2. Build email content (same as before)
+      // 2. Build email content
       const companyName = 'Auto Parts Store';
       const amountDue = totalAmount.toFixed(2);
       const dueDateFormatted = new Date(invoice.dueDate).toLocaleDateString('en-US', {
@@ -223,7 +234,7 @@ equivise25@gmail.com
           </div>
         </section>
 
-        {/* Items - unchanged */}
+        {/* Items */}
         <section className="bg-white p-7 rounded-2xl border border-gray-200 shadow-sm">
           <div className="flex flex-col sm:flex-row justify-between mb-6 gap-4">
             <h2 className="text-xl font-semibold text-gray-800">Items / Services</h2>

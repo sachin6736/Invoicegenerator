@@ -1,14 +1,17 @@
 // src/pages/Invoices.jsx
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
-import { format, isPast, parseISO } from 'date-fns'; // ← add isPast
+import { format, isPast, parseISO } from 'date-fns';
 import { FileText, ChevronLeft, ChevronRight, CheckCircle, Clock, AlertTriangle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';   // ← Added
 
 const API = import.meta.env.VITE_API_URL;
 
 export default function Invoices() {
   const navigate = useNavigate();
+  const { token } = useAuth();     // ← Get token from AuthContext
+
   const [invoices, setInvoices] = useState([]);
   const [pagination, setPagination] = useState({
     currentPage: 1,
@@ -20,14 +23,30 @@ export default function Invoices() {
   const [error, setError] = useState(null);
 
   const fetchInvoices = async (page = 1) => {
+    if (!token) {
+      setError("Please login to view invoices");
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
     try {
-      const res = await fetch(`${API}/Invoice/sent?page=${page}&limit=10`);
+      const res = await fetch(`${API}/Invoice/sent?page=${page}&limit=10`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`   // ← Token added here
+        }
+      });
+
       const data = await res.json();
 
       if (!res.ok) {
+        if (res.status === 401) {
+          throw new Error('Session expired. Please login again.');
+        }
         throw new Error(data.message || 'Failed to fetch invoices');
       }
 
@@ -43,7 +62,7 @@ export default function Invoices() {
 
   useEffect(() => {
     fetchInvoices(1);
-  }, []);
+  }, [token]);   // ← Re-fetch when token changes
 
   const handlePageChange = (newPage) => {
     if (newPage >= 1 && newPage <= pagination.totalPages) {
@@ -97,7 +116,7 @@ export default function Invoices() {
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold text-gray-900">Sent Invoices</h1>
         <button
-          onClick={() => navigate('/send')}  // better than window.location
+          onClick={() => navigate('/send')}
           className="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium"
         >
           + New Invoice
@@ -119,7 +138,7 @@ export default function Invoices() {
                   Issue Date
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Due Date    {/* ← new column */}
+                  Due Date
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Sent Date
@@ -165,7 +184,7 @@ export default function Invoices() {
                         : '—'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      $ {invoice.totalAmount?.toFixed(2) || '0.00'}
+                      ₹{invoice.totalAmount?.toFixed(2) || '0.00'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span
@@ -186,7 +205,7 @@ export default function Invoices() {
           </table>
         </div>
 
-        {/* Pagination – unchanged */}
+        {/* Pagination */}
         <div className="px-6 py-4 flex items-center justify-between border-t border-gray-200 bg-gray-50">
           <div className="text-sm text-gray-700">
             Showing <span className="font-medium">{invoices.length}</span> of{' '}

@@ -4,26 +4,44 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { format, differenceInCalendarDays } from 'date-fns';
 import { ArrowLeft, Clock, CheckCircle2, AlertCircle } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';   // ← Added
 
 const API = import.meta.env.VITE_API_URL;
 
 export default function InvoiceDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { token } = useAuth();     // ← Get token from AuthContext
 
   const [invoice, setInvoice] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   const fetchInvoice = async () => {
+    if (!token) {
+      setError("Please login to view invoice details");
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
     try {
-      const res = await fetch(`${API}/Invoice/${id}`);
+      const res = await fetch(`${API}/Invoice/${id}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`   // ← Token added here
+        }
+      });
+
       const data = await res.json();
 
       if (!res.ok) {
+        if (res.status === 401) {
+          throw new Error('Session expired. Please login again.');
+        }
         throw new Error(data.message || 'Failed to fetch invoice');
       }
 
@@ -38,7 +56,7 @@ export default function InvoiceDetail() {
 
   useEffect(() => {
     fetchInvoice();
-  }, [id]);
+  }, [id, token]);   // ← Added token as dependency
 
   if (loading) {
     return (
@@ -205,9 +223,6 @@ export default function InvoiceDetail() {
             </div>
           </div>
         )}
-
-        {/* Footer Info */}
-        
       </div>
     </div>
   );
