@@ -207,7 +207,7 @@ export default function PaidInvoices() {
             </button>
           </div>
         </div>
-      </div>
+      </div>  
     </div>
   );
 }

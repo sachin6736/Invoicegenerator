@@ -143,7 +143,7 @@ export const getInvoiceById = async (req, res) => {
     });
   } catch (error) {
     console.error('Get invoice by ID error:', error);
-    res.status(500).json({
+    res.status(500).json({  
       success: false,
       message: 'Failed to fetch invoice',
       error: error.message,
