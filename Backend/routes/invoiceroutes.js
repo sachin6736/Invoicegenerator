@@ -13,6 +13,6 @@ router.get('/sent', authMiddleware,getSentInvoices);
 router.get('/paid',authMiddleware,  getPaidInvoices);     
 
 // Parametric route last
-router.get('/:id',authMiddleware, getInvoiceById);
+router.get('/:id', getInvoiceById);
 
 export default router;

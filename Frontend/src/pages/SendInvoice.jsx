@@ -152,9 +152,8 @@ You will be redirected to a secure payment page powered by PayPal.
 Kindly ensure payment is completed before the due date.
 Questions? Just reply to this email — we're happy to help!
 
-Thank you for your business!
+Thank you 
 ${companyName}
-equivise25@gmail.com
       `.trim();
 
       // 3. Open Gmail compose
