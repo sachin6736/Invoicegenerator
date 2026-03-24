@@ -124,7 +124,7 @@ export default function PayInvoice() {
             clientId: import.meta.env.VITE_PAYPAL_CLIENT_ID,
             currency: invoice.currency || "USD",
             intent: "capture",           // ← added
-            environment: "live",         // ← added (optional but explicit)
+            environment: "production",         // ← added (optional but explicit)
           }}>
             <div id="paypal-button-container" className="min-h-[200px] flex items-center justify-center">
               <PayPalButtons
