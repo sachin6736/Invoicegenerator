@@ -32,6 +32,7 @@ app.use(cors({
   },
   credentials: true
 }));
+
 console.log(`PayPal Mode: ${process.env.PAYPAL_MODE || 'sandbox (default)'}`);
 
 app.use(express.json());
