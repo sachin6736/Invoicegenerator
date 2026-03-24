@@ -99,7 +99,7 @@ export default function PayInvoice() {
             <div className="flex justify-between items-start">
               <div>
                 <h2 className="text-2xl font-semibold">Auto Parts Store</h2>
-                <p className="text-blue-100 mt-1">Glendale, California</p>
+                {/* <p className="text-blue-100 mt-1">Glendale, California</p> */}
               </div>
               <div className="text-right">
                 <p className="text-sm opacity-75">Invoice Number</p>
