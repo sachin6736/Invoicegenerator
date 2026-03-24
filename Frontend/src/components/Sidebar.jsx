@@ -1,6 +1,7 @@
 // src/components/Sidebar.jsx
 import { useState } from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import {
   LayoutDashboard,
   FileText,
@@ -10,19 +11,28 @@ import {
   LogOut,
   Menu,
   X,
-  FilePen,
-  CheckCircle
+  CheckCircle,
 } from 'lucide-react';
 
 const menuItems = [
-  { to: '/send',     label: 'Send',     icon: Send },   // ← changed
+  { to: '/send', label: 'Send', icon: Send },
   { to: '/invoices', label: 'Invoices', icon: FileText },
-  { to: '/paid-invoices', label: 'Paid',       icon: CheckCircle },
+  { to: '/paid-invoices', label: 'Paid', icon: CheckCircle },
 ];
 
 export default function Sidebar() {
   const [mobileOpen, setMobileOpen] = useState(false);
-  const location = useLocation();
+  const [settingsOpen, setSettingsOpen] = useState(false); // ← for settings dropdown
+
+  const { logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();                    // clears token from context & localStorage
+    setSettingsOpen(false);
+    setMobileOpen(false);
+    navigate('/login', { replace: true });
+  };
 
   return (
     <>
@@ -45,14 +55,12 @@ export default function Sidebar() {
         {/* Logo area */}
         <div className="h-16 flex items-center px-6 border-b border-gray-800">
           <span className="text-2xl font-bold text-blue-500">Invoice Generator</span>
-          {/* or your logo image */}
         </div>
 
         {/* Menu */}
         <nav className="mt-8 px-3 flex flex-col gap-1">
           {menuItems.map((item) => {
             const Icon = item.icon;
-            const isActive = location.pathname === item.to;
 
             return (
               <NavLink
@@ -75,15 +83,31 @@ export default function Sidebar() {
           })}
         </nav>
 
-        {/* Logout at bottom */}
-        {/* <div className="absolute bottom-6 left-0 right-0 px-3">
-          <button
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-gray-300 hover:bg-gray-800 hover:text-white transition-colors"
-          >
-            <LogOut size={20} />
-            Logout
-          </button>
-        </div> */}
+        {/* Settings + Logout at bottom */}
+        <div className="absolute bottom-6 left-0 right-0 px-3">
+          <div className="relative">
+            <button
+              onClick={() => setSettingsOpen(!settingsOpen)}
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-gray-300 hover:bg-gray-800 hover:text-white transition-colors"
+            >
+              <Settings size={20} />
+              Settings
+            </button>
+
+            {/* Dropdown Menu */}
+            {settingsOpen && (
+              <div className="absolute bottom-14 left-0 w-full bg-gray-800 rounded-lg shadow-lg py-2 z-50">
+                <button
+                  onClick={handleLogout}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-red-400 hover:bg-gray-700 transition-colors"
+                >
+                  <LogOut size={20} />
+                  Logout
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
       </aside>
 
       {/* Mobile overlay */}
@@ -91,6 +115,14 @@ export default function Sidebar() {
         <div
           className="fixed inset-0 bg-black/60 z-30 lg:hidden"
           onClick={() => setMobileOpen(false)}
+        />
+      )}
+
+      {/* Click outside to close settings dropdown */}
+      {settingsOpen && (
+        <div
+          className="fixed inset-0 z-40 lg:hidden"
+          onClick={() => setSettingsOpen(false)}
         />
       )}
     </>

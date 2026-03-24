@@ -8,20 +8,29 @@ export const AuthProvider = ({ children }) => {
   const [token, setToken] = useState(localStorage.getItem('token') || null);
   const [loading, setLoading] = useState(true);
 
+  // Restore user from token on app load
   useEffect(() => {
-    // Check if token exists and try to restore user
-    if (token) {
-      // Optional: fetch user profile here if you have a /auth/me endpoint
-      // For now we just assume token = logged in
-      setUser({ token }); // minimal version — you can expand later
-    }
-    setLoading(false);
+    const restoreUser = async () => {
+      if (token) {
+        try {
+          // Optional: You can call your backend to get fresh user data
+          // For now, we use the minimal version from localStorage
+          setUser({ token }); 
+        } catch (err) {
+          console.error("Failed to restore user:", err);
+          logout(); // clear invalid token
+        }
+      }
+      setLoading(false);
+    };
+
+    restoreUser();
   }, [token]);
 
   const login = (newToken, userData) => {
     localStorage.setItem('token', newToken);
     setToken(newToken);
-    setUser(userData);
+    setUser(userData || { token: newToken });
   };
 
   const logout = () => {
@@ -30,12 +39,16 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
   };
 
+  // Helper to check if user is authenticated
+  const isAuthenticated = !!token;
+
   const value = {
     user,
     token,
+    loading,
+    isAuthenticated,
     login,
     logout,
-    loading,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
