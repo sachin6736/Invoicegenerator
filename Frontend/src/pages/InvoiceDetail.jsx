@@ -2,12 +2,13 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { format } from 'date-fns';
-import { ArrowLeft, FileText, Printer, Clock, CheckCircle } from 'lucide-react';
+import { format, differenceInCalendarDays } from 'date-fns';
+import { ArrowLeft, Clock, CheckCircle2, AlertCircle } from 'lucide-react';
+
 const API = import.meta.env.VITE_API_URL;
 
 export default function InvoiceDetail() {
-  const { id } = useParams(); // Get invoice ID from URL
+  const { id } = useParams();
   const navigate = useNavigate();
 
   const [invoice, setInvoice] = useState(null);
@@ -41,123 +42,153 @@ export default function InvoiceDetail() {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      <div className="flex justify-center items-center min-h-[70vh]">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-600"></div>
       </div>
     );
   }
 
   if (error || !invoice) {
     return (
-      <div className="text-center p-10 text-red-600">
-        <p className="text-xl font-semibold">Error: {error || 'Invoice not found'}</p>
-        <button
-          onClick={() => navigate('/invoices')}
-          className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-        >
-          Back to Invoices
-        </button>
+      <div className="max-w-4xl mx-auto px-4 py-16 text-center">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-10">
+          <h2 className="text-2xl font-semibold text-gray-900 mb-4">Invoice Not Found</h2>
+          <p className="text-gray-600 mb-6">{error || 'The requested invoice could not be found.'}</p>
+          <button
+            onClick={() => navigate('/invoices')}
+            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium"
+          >
+            Back to Invoices
+          </button>
+        </div>
       </div>
     );
   }
 
+  const issueDate = new Date(invoice.issueDate);
+  const dueDate = new Date(invoice.dueDate);
+  const daysUntilDue = differenceInCalendarDays(dueDate, new Date());
+  const isOverdue = daysUntilDue < 0 && invoice.status !== 'paid';
+
   return (
-    <div className="space-y-8 max-w-5xl mx-auto">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div className="flex items-center gap-4">
           <button
             onClick={() => navigate(-1)}
-            className="p-2 rounded-lg hover:bg-gray-100"
+            className="p-2 rounded-full hover:bg-gray-100 transition"
+            aria-label="Go back"
           >
-            <ArrowLeft size={24} />
+            <ArrowLeft size={24} className="text-gray-700" />
           </button>
-          <h1 className="text-3xl font-bold text-gray-900">
-            Invoice {invoice.invoiceNumber}
-          </h1>
-        </div>
-
-        <div className="flex gap-3">
-          <button className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 flex items-center gap-2">
-            <Printer size={18} /> Print / PDF
-          </button>
-        </div>
-      </div>
-
-      {/* Status Badge */}
-      <div className="flex justify-end">
-        <span
-          className={`inline-flex items-center px-4 py-1.5 rounded-full text-sm font-medium ${
-            invoice.status === 'sent'
-              ? 'bg-blue-100 text-blue-800'
-              : invoice.status === 'paid'
-              ? 'bg-green-100 text-green-800'
-              : 'bg-gray-100 text-gray-800'
-          }`}
-        >
-          {invoice.status === 'sent' && <Clock size={16} className="mr-1.5" />}
-          {invoice.status === 'paid' && <CheckCircle size={16} className="mr-1.5" />}
-          {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
-        </span>
-      </div>
-
-      {/* Main Content - Card-like */}
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-8">
-        {/* Top Section: Dates & Client */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10">
           <div>
-            <h3 className="text-lg font-semibold mb-2">Issue Date</h3>
-            <p className="text-gray-700">
-              {format(new Date(invoice.issueDate), 'dd MMMM yyyy')}
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
+              Invoice {invoice.invoiceNumber}
+            </h1>
+            <p className="text-sm text-gray-500 mt-1">
+              Issued on {format(issueDate, 'MMMM d, yyyy')}
             </p>
-            {invoice.sentAt && (
-              <p className="text-sm text-gray-500 mt-1">
-                Sent on {format(new Date(invoice.sentAt), 'dd MMM yyyy, hh:mm a')}
-              </p>
-            )}
+          </div>
+        </div>
+
+        {/* Status Badge */}
+        <div className="flex items-center gap-3">
+          {invoice.status === 'paid' ? (
+            <span className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-green-100 text-green-800 text-sm font-medium">
+              <CheckCircle2 size={16} />
+              Paid
+            </span>
+          ) : isOverdue ? (
+            <span className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-red-100 text-red-800 text-sm font-medium">
+              <AlertCircle size={16} />
+              Overdue
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-blue-100 text-blue-800 text-sm font-medium">
+              <Clock size={16} />
+              Pending
+            </span>
+          )}
+
+          {invoice.status === 'paid' && invoice.paidAt && (
+            <span className="text-sm text-gray-600">
+              on {format(new Date(invoice.paidAt), 'MMM d, yyyy')}
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Main Card */}
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+        {/* Client & Dates */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 p-8 border-b border-gray-100">
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-3">Billed To</h3>
+            <div className="space-y-1.5">
+              <p className="font-medium text-gray-900">{invoice.client.name}</p>
+              <p className="text-gray-600">{invoice.client.email}</p>
+              {invoice.client.phone && <p className="text-gray-600">{invoice.client.phone}</p>}
+              {invoice.client.address && (
+                <p className="text-gray-600 whitespace-pre-line">{invoice.client.address}</p>
+              )}
+            </div>
           </div>
 
-          <div>
-            <h3 className="text-lg font-semibold mb-2">Client</h3>
-            <p className="font-medium">{invoice.client.name}</p>
-            <p className="text-gray-600">{invoice.client.email}</p>
-            {invoice.client.phone && <p className="text-gray-600">{invoice.client.phone}</p>}
-            {invoice.client.address && <p className="text-gray-600">{invoice.client.address}</p>}
+          <div className="space-y-6">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-3">Invoice Details</h3>
+              <div className="space-y-2 text-gray-700">
+                <p>
+                  <span className="font-medium">Issue Date:</span>{' '}
+                  {format(issueDate, 'MMMM d, yyyy')}
+                </p>
+                <p>
+                  <span className="font-medium">Due Date:</span>{' '}
+                  {format(dueDate, 'MMMM d, yyyy')}
+                </p>
+                {invoice.status !== 'paid' && (
+                  <p className={isOverdue ? 'text-red-600 font-medium' : 'text-gray-700'}>
+                    {isOverdue
+                      ? `Overdue by ${Math.abs(daysUntilDue)} days`
+                      : `Due in ${daysUntilDue} days`}
+                  </p>
+                )}
+              </div>
+            </div>
           </div>
         </div>
 
         {/* Items Table */}
-        <div className="mb-10">
-          <h3 className="text-xl font-bold mb-4">Invoice Items</h3>
-          <div className="overflow-x-auto border border-gray-200 rounded-lg">
+        <div className="p-8">
+          <h3 className="text-xl font-bold text-gray-900 mb-6">Invoice Items</h3>
+          <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <thead>
+                <tr className="bg-gray-50">
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">
                     Description
                   </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Amount (₹)
+                  <th className="px-6 py-4 text-right text-sm font-semibold text-gray-700">
+                    Amount
                   </th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="divide-y divide-gray-200 bg-white">
                 {invoice.items.map((item, index) => (
-                  <tr key={index} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-pre-wrap text-sm text-gray-900">
-                      {item.description}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-medium text-gray-900">
-                      {item.amount.toFixed(2)}
+                  <tr key={index} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-6 py-4 text-gray-900">{item.description}</td>
+                    <td className="px-6 py-4 text-right font-medium text-gray-900">
+                      ${Number(item.amount).toFixed(2)}
                     </td>
                   </tr>
                 ))}
               </tbody>
-              <tfoot className="bg-gray-50">
+              <tfoot className="bg-gray-50 font-medium">
                 <tr>
-                  <td className="px-6 py-4 text-right font-bold text-gray-900">Total</td>
-                  <td className="px-6 py-4 text-right font-bold text-gray-900">
-                    ₹{invoice.totalAmount.toFixed(2)}
+                  <td className="px-6 py-4 text-right text-gray-900">Total Amount</td>
+                  <td className="px-6 py-4 text-right text-xl font-bold text-gray-900">
+                    ${invoice.totalAmount.toFixed(2)}
                   </td>
                 </tr>
               </tfoot>
@@ -165,21 +196,18 @@ export default function InvoiceDetail() {
           </div>
         </div>
 
-        {/* Notes & Payment Terms */}
-        {(invoice.notes) && (
-          <div className="mb-8">
-            <h3 className="text-lg font-semibold mb-2">Notes</h3>
-            <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 whitespace-pre-wrap text-gray-700">
+        {/* Notes */}
+        {invoice.notes && (
+          <div className="px-8 pb-8 pt-4 border-t border-gray-100">
+            <h3 className="text-lg font-semibold text-gray-900 mb-3">Notes</h3>
+            <div className="bg-gray-50 p-5 rounded-lg border border-gray-200 text-gray-700 whitespace-pre-line leading-relaxed">
               {invoice.notes}
             </div>
           </div>
         )}
 
-        {/* You can add Payment Terms section here later */}
-        {/* <div>
-          <h3 className="text-lg font-semibold mb-2">Payment Terms</h3>
-          <p className="text-gray-700">Due within 15 days. Bank transfer to...</p>
-        </div> */}
+        {/* Footer Info */}
+        
       </div>
     </div>
   );

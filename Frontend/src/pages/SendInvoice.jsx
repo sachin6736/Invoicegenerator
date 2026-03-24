@@ -1,4 +1,3 @@
-// src/pages/SendInvoice.jsx
 import { useState } from 'react';
 import { toast } from 'sonner';
 const API = import.meta.env.VITE_API_URL;
@@ -11,7 +10,6 @@ export default function SendInvoice() {
     issueDate: new Date().toISOString().slice(0, 10),
     items: [{ description: '', amount: '' }],
     notes: '',
-    // currency removed
   };
 
   const [formData, setFormData] = useState(initialFormData);
@@ -86,10 +84,10 @@ export default function SendInvoice() {
       })),
       totalAmount,
       notes: formData.notes?.trim() || undefined,
-      // currency removed — backend will force USD
     };
 
     try {
+      // 1. Save invoice to backend (no email sent)
       const res = await fetch(`${API}/Invoice/send`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -99,13 +97,68 @@ export default function SendInvoice() {
       const result = await res.json();
 
       if (!res.ok) {
-        throw new Error(result.message || 'Failed to send invoice');
+        throw new Error(result.message || 'Failed to create invoice');
       }
 
-      toast.success(`Invoice ${result.invoice.invoiceNumber} sent successfully!`);
+      const invoice = result.invoice;
+      const invoiceNumber = invoice.invoiceNumber;
+      const payNowUrl = `https://www.autopartsinvoices.xyz/pay/${invoice._id}`; // Use current origin (better than env for production)
+
+      // 2. Build email content (same as before)
+      const companyName = 'Auto Parts Store';
+      const amountDue = totalAmount.toFixed(2);
+      const dueDateFormatted = new Date(invoice.dueDate).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      });
+
+      const itemsListText = invoice.items
+        .map((item) => `  • ${item.description}: $${Number(item.amount).toFixed(2)}`)
+        .join('\n');
+
+      const subject = `Invoice ${invoiceNumber} from ${companyName}`;
+
+      const body = `
+Dear ${invoice.client.name || 'Customer'},
+
+You have received a new invoice from ${companyName}.
+
+Invoice Number: ${invoiceNumber}
+Amount Due:    $${amountDue}
+Due Date:      ${dueDateFormatted}
+
+Invoice Items:
+${itemsListText}
+
+Total Due: $${amountDue}
+
+To complete the payment securely, please visit this link:
+${payNowUrl}
+
+You will be redirected to a secure payment page powered by PayPal.
+
+Kindly ensure payment is completed before the due date.
+Questions? Just reply to this email — we're happy to help!
+
+Thank you for your business!
+${companyName}
+equivise25@gmail.com
+      `.trim();
+
+      // 3. Open Gmail compose
+      const encodedSubject = encodeURIComponent(subject);
+      const encodedBody = encodeURIComponent(body);
+      const toEmail = encodeURIComponent(invoice.client.email);
+
+      const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&tf=1&to=${toEmail}&su=${encodedSubject}&body=${encodedBody}`;
+
+      window.open(gmailUrl, '_blank');
+
+      toast.success(`Invoice ${invoiceNumber} created! Gmail compose opened — please review & send.`);
       resetForm();
     } catch (err) {
-      toast.error(err.message || 'Error sending invoice');
+      toast.error(err.message || 'Error creating invoice');
     } finally {
       setLoading(false);
     }
@@ -170,7 +223,7 @@ export default function SendInvoice() {
           </div>
         </section>
 
-        {/* Items */}
+        {/* Items - unchanged */}
         <section className="bg-white p-7 rounded-2xl border border-gray-200 shadow-sm">
           <div className="flex flex-col sm:flex-row justify-between mb-6 gap-4">
             <h2 className="text-xl font-semibold text-gray-800">Items / Services</h2>
@@ -260,7 +313,7 @@ export default function SendInvoice() {
                 loading ? 'opacity-60 cursor-not-allowed' : ''
               }`}
             >
-              {loading ? 'Sending Invoice...' : 'Send Invoice'}
+              {loading ? 'Creating & Opening Gmail...' : 'Send Invoice'}
             </button>
           </div>
         </section>
