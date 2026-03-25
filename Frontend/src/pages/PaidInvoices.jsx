@@ -203,7 +203,7 @@ export default function PaidInvoices() {
               disabled={pagination.currentPage === pagination.totalPages}
               className="p-2 rounded-lg border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
             >
-              <ChevronRight size={20} />
+              <ChevronRight size={20} />  
             </button>
           </div>
         </div>
