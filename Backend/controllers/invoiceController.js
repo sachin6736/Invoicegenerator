@@ -191,3 +191,29 @@ export const getPaidInvoices = async (req, res) => {
     });
   }
 };
+
+
+export const updateNotes = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { notes } = req.body;
+
+    const invoice = await Invoice.findByIdAndUpdate(
+      id,
+      { notes },
+      { new: true }
+    );
+
+    if (!invoice) {
+      return res.status(404).json({ success: false, message: 'Invoice not found' });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Notes updated successfully',
+      invoice,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};

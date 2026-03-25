@@ -3,19 +3,22 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { format, differenceInCalendarDays } from 'date-fns';
-import { ArrowLeft, Clock, CheckCircle2, AlertCircle } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';   // ← Added
+import { ArrowLeft, Clock, CheckCircle2, AlertCircle, Edit3, Save } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 const API = import.meta.env.VITE_API_URL;
 
 export default function InvoiceDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { token } = useAuth();     // ← Get token from AuthContext
+  const { token } = useAuth();
 
   const [invoice, setInvoice] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isEditingNotes, setIsEditingNotes] = useState(false);
+  const [notesInput, setNotesInput] = useState('');
+  const [savingNotes, setSavingNotes] = useState(false);
 
   const fetchInvoice = async () => {
     if (!token) {
@@ -32,7 +35,7 @@ export default function InvoiceDetail() {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`   // ← Token added here
+          'Authorization': `Bearer ${token}`
         }
       });
 
@@ -46,6 +49,7 @@ export default function InvoiceDetail() {
       }
 
       setInvoice(data.invoice);
+      setNotesInput(data.invoice.notes || '');
     } catch (err) {
       setError(err.message);
       toast.error(err.message || 'Error loading invoice details');
@@ -54,9 +58,39 @@ export default function InvoiceDetail() {
     }
   };
 
+  // Save notes to backend
+  const saveNotes = async () => {
+    setSavingNotes(true);
+
+    try {
+      const res = await fetch(`${API}/Invoice/${id}/notes`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ notes: notesInput.trim() }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.message || 'Failed to save notes');
+      }
+
+      setInvoice(data.invoice);
+      setIsEditingNotes(false);
+      toast.success('Notes updated successfully!');
+    } catch (err) {
+      toast.error(err.message || 'Failed to save notes');
+    } finally {
+      setSavingNotes(false);
+    }
+  };
+
   useEffect(() => {
     fetchInvoice();
-  }, [id, token]);   // ← Added token as dependency
+  }, [id, token]);
 
   if (loading) {
     return (
@@ -126,12 +160,6 @@ export default function InvoiceDetail() {
             <span className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-blue-100 text-blue-800 text-sm font-medium">
               <Clock size={16} />
               Pending
-            </span>
-          )}
-
-          {invoice.status === 'paid' && invoice.paidAt && (
-            <span className="text-sm text-gray-600">
-              on {format(new Date(invoice.paidAt), 'MMM d, yyyy')}
             </span>
           )}
         </div>
@@ -214,15 +242,54 @@ export default function InvoiceDetail() {
           </div>
         </div>
 
-        {/* Notes */}
-        {invoice.notes && (
-          <div className="px-8 pb-8 pt-4 border-t border-gray-100">
-            <h3 className="text-lg font-semibold text-gray-900 mb-3">Notes</h3>
-            <div className="bg-gray-50 p-5 rounded-lg border border-gray-200 text-gray-700 whitespace-pre-line leading-relaxed">
-              {invoice.notes}
-            </div>
+        {/* Notes Section with Edit Option */}
+        <div className="px-8 pb-8 pt-4 border-t border-gray-100">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-lg font-semibold text-gray-900">Notes</h3>
+            <button
+              onClick={() => setIsEditingNotes(!isEditingNotes)}
+              className="flex items-center gap-2 text-blue-600 hover:text-blue-700 text-sm font-medium"
+            >
+              <Edit3 size={16} />
+              {isEditingNotes ? 'Cancel' : 'Edit Notes'}
+            </button>
           </div>
-        )}
+
+          {isEditingNotes ? (
+            <div className="space-y-4">
+              <textarea
+                value={notesInput}
+                onChange={(e) => setNotesInput(e.target.value)}
+                rows={6}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none"
+                placeholder="Add notes, payment terms, bank details, etc..."
+              />
+              <div className="flex gap-3">
+                <button
+                  onClick={saveNotes}
+                  disabled={savingNotes}
+                  className="flex-1 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center justify-center gap-2"
+                >
+                  <Save size={18} />
+                  {savingNotes ? 'Saving...' : 'Save Notes'}
+                </button>
+                <button
+                  onClick={() => {
+                    setIsEditingNotes(false);
+                    setNotesInput(invoice.notes || '');
+                  }}
+                  className="flex-1 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-gray-50 p-5 rounded-lg border border-gray-200 text-gray-700 whitespace-pre-line leading-relaxed min-h-[100px]">
+              {invoice.notes || 'No notes added yet.'}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

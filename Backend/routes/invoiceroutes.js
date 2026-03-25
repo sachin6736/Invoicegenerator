@@ -2,7 +2,7 @@
 
 import express from 'express';
 import authMiddleware from '../middleware/authMiddleware.js';
-import { sendInvoice, getSentInvoices, getPaidInvoices, getInvoiceById , } from '../controllers/invoiceController.js';
+import { sendInvoice, getSentInvoices, getPaidInvoices, getInvoiceById ,updateNotes } from '../controllers/invoiceController.js';
 
 const router = express.Router();
 
@@ -14,5 +14,6 @@ router.get('/paid',authMiddleware,  getPaidInvoices);
 
 // Parametric route last
 router.get('/:id',authMiddleware, getInvoiceById);
+router.patch('/:id/notes', authMiddleware, updateNotes);
 
 export default router;
