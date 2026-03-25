@@ -32,14 +32,12 @@ const invoiceSchema = new mongoose.Schema({
     type: Date,
   },
 
-  // Currency is now fixed → no enum, no flexibility
   currency: {
     type: String,
     default: "USD",
     required: true,
   },
 
-  // PayPal fields
   paypalOrderId: String,
   paypalCaptureId: String,
 
@@ -63,9 +61,18 @@ const invoiceSchema = new mongoose.Schema({
     min: 0,
   },
 
+  // Single note (for general use)
   notes: {
     type: String,
   },
+
+  // Notes History - only for paid invoices (as per your request)
+  notesHistory: [
+    {
+      note: { type: String, required: true },
+      addedAt: { type: Date, default: Date.now },
+    }
+  ],
 
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,

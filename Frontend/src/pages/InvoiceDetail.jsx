@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { format, differenceInCalendarDays } from 'date-fns';
-import { ArrowLeft, Clock, CheckCircle2, AlertCircle, Edit3, Save } from 'lucide-react';
+import { ArrowLeft, Clock, CheckCircle2, AlertCircle, Plus } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const API = import.meta.env.VITE_API_URL;
@@ -16,9 +16,8 @@ export default function InvoiceDetail() {
   const [invoice, setInvoice] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [isEditingNotes, setIsEditingNotes] = useState(false);
-  const [notesInput, setNotesInput] = useState('');
-  const [savingNotes, setSavingNotes] = useState(false);
+  const [newNote, setNewNote] = useState('');
+  const [addingNote, setAddingNote] = useState(false);
 
   const fetchInvoice = async () => {
     if (!token) {
@@ -42,14 +41,11 @@ export default function InvoiceDetail() {
       const data = await res.json();
 
       if (!res.ok) {
-        if (res.status === 401) {
-          throw new Error('Session expired. Please login again.');
-        }
+        if (res.status === 401) throw new Error('Session expired. Please login again.');
         throw new Error(data.message || 'Failed to fetch invoice');
       }
 
       setInvoice(data.invoice);
-      setNotesInput(data.invoice.notes || '');
     } catch (err) {
       setError(err.message);
       toast.error(err.message || 'Error loading invoice details');
@@ -58,9 +54,14 @@ export default function InvoiceDetail() {
     }
   };
 
-  // Save notes to backend
-  const saveNotes = async () => {
-    setSavingNotes(true);
+  // Add new note to notesHistory (only for paid invoices)
+  const addNote = async () => {
+    if (!newNote.trim()) {
+      toast.error("Please enter a note");
+      return;
+    }
+
+    setAddingNote(true);
 
     try {
       const res = await fetch(`${API}/Invoice/${id}/notes`, {
@@ -69,22 +70,20 @@ export default function InvoiceDetail() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ notes: notesInput.trim() }),
+        body: JSON.stringify({ note: newNote.trim() }),
       });
 
       const data = await res.json();
 
-      if (!res.ok) {
-        throw new Error(data.message || 'Failed to save notes');
-      }
+      if (!res.ok) throw new Error(data.message || 'Failed to add note');
 
       setInvoice(data.invoice);
-      setIsEditingNotes(false);
-      toast.success('Notes updated successfully!');
+      setNewNote('');                    // clear input
+      toast.success('Note added successfully!');
     } catch (err) {
-      toast.error(err.message || 'Failed to save notes');
+      toast.error(err.message || 'Failed to add note');
     } finally {
-      setSavingNotes(false);
+      setAddingNote(false);
     }
   };
 
@@ -106,10 +105,7 @@ export default function InvoiceDetail() {
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-10">
           <h2 className="text-2xl font-semibold text-gray-900 mb-4">Invoice Not Found</h2>
           <p className="text-gray-600 mb-6">{error || 'The requested invoice could not be found.'}</p>
-          <button
-            onClick={() => navigate('/invoices')}
-            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium"
-          >
+          <button onClick={() => navigate('/invoices')} className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
             Back to Invoices
           </button>
         </div>
@@ -127,11 +123,7 @@ export default function InvoiceDetail() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div className="flex items-center gap-4">
-          <button
-            onClick={() => navigate(-1)}
-            className="p-2 rounded-full hover:bg-gray-100 transition"
-            aria-label="Go back"
-          >
+          <button onClick={() => navigate(-1)} className="p-2 rounded-full hover:bg-gray-100">
             <ArrowLeft size={24} className="text-gray-700" />
           </button>
           <div>
@@ -144,7 +136,6 @@ export default function InvoiceDetail() {
           </div>
         </div>
 
-        {/* Status Badge */}
         <div className="flex items-center gap-3">
           {invoice.status === 'paid' ? (
             <span className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-green-100 text-green-800 text-sm font-medium">
@@ -185,19 +176,11 @@ export default function InvoiceDetail() {
             <div>
               <h3 className="text-lg font-semibold text-gray-900 mb-3">Invoice Details</h3>
               <div className="space-y-2 text-gray-700">
-                <p>
-                  <span className="font-medium">Issue Date:</span>{' '}
-                  {format(issueDate, 'MMMM d, yyyy')}
-                </p>
-                <p>
-                  <span className="font-medium">Due Date:</span>{' '}
-                  {format(dueDate, 'MMMM d, yyyy')}
-                </p>
+                <p><span className="font-medium">Issue Date:</span> {format(issueDate, 'MMMM d, yyyy')}</p>
+                <p><span className="font-medium">Due Date:</span> {format(dueDate, 'MMMM d, yyyy')}</p>
                 {invoice.status !== 'paid' && (
                   <p className={isOverdue ? 'text-red-600 font-medium' : 'text-gray-700'}>
-                    {isOverdue
-                      ? `Overdue by ${Math.abs(daysUntilDue)} days`
-                      : `Due in ${daysUntilDue} days`}
+                    {isOverdue ? `Overdue by ${Math.abs(daysUntilDue)} days` : `Due in ${daysUntilDue} days`}
                   </p>
                 )}
               </div>
@@ -212,12 +195,8 @@ export default function InvoiceDetail() {
             <table className="min-w-full divide-y divide-gray-200">
               <thead>
                 <tr className="bg-gray-50">
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">
-                    Description
-                  </th>
-                  <th className="px-6 py-4 text-right text-sm font-semibold text-gray-700">
-                    Amount
-                  </th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Description</th>
+                  <th className="px-6 py-4 text-right text-sm font-semibold text-gray-700">Amount</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 bg-white">
@@ -242,52 +221,65 @@ export default function InvoiceDetail() {
           </div>
         </div>
 
-        {/* Notes Section with Edit Option */}
+        {/* Notes Section */}
         <div className="px-8 pb-8 pt-4 border-t border-gray-100">
-          <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-gray-900">Notes</h3>
-            <button
-              onClick={() => setIsEditingNotes(!isEditingNotes)}
-              className="flex items-center gap-2 text-blue-600 hover:text-blue-700 text-sm font-medium"
-            >
-              <Edit3 size={16} />
-              {isEditingNotes ? 'Cancel' : 'Edit Notes'}
-            </button>
           </div>
 
-          {isEditingNotes ? (
-            <div className="space-y-4">
-              <textarea
-                value={notesInput}
-                onChange={(e) => setNotesInput(e.target.value)}
-                rows={6}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none"
-                placeholder="Add notes, payment terms, bank details, etc..."
-              />
-              <div className="flex gap-3">
-                <button
-                  onClick={saveNotes}
-                  disabled={savingNotes}
-                  className="flex-1 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center justify-center gap-2"
-                >
-                  <Save size={18} />
-                  {savingNotes ? 'Saving...' : 'Save Notes'}
-                </button>
-                <button
-                  onClick={() => {
-                    setIsEditingNotes(false);
-                    setNotesInput(invoice.notes || '');
-                  }}
-                  className="flex-1 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
+          {/* General Notes (shown for all invoices) */}
+          {invoice.notes && (
+            <div className="mb-8">
+              <h4 className="text-sm font-medium text-gray-500 mb-2">Notes/Payment Terms</h4>
+              <div className="bg-gray-50 p-5 rounded-lg border border-gray-200 text-gray-700 whitespace-pre-line">
+                {invoice.notes}
               </div>
             </div>
-          ) : (
-            <div className="bg-gray-50 p-5 rounded-lg border border-gray-200 text-gray-700 whitespace-pre-line leading-relaxed min-h-[100px]">
-              {invoice.notes || 'No notes added yet.'}
-            </div>
+          )}
+
+          {/* Notes History - Shown ONLY for Paid Invoices */}
+          {invoice.status === 'paid' && (
+            <>
+              <div className="mb-6">
+                <h4 className="text-sm font-medium text-gray-500 mb-3">Notes History</h4>
+                {invoice.notesHistory && invoice.notesHistory.length > 0 ? (
+                  <div className="space-y-4">
+                    {invoice.notesHistory
+                      .sort((a, b) => new Date(b.addedAt) - new Date(a.addedAt))
+                      .map((entry, index) => (
+                        <div key={index} className="bg-gray-50 p-5 rounded-lg border border-gray-200">
+                          <p className="text-gray-700 whitespace-pre-line">{entry.note}</p>
+                          <p className="text-xs text-gray-500 mt-2">
+                            Added on {format(new Date(entry.addedAt), 'MMM d, yyyy • hh:mm a')}
+                          </p>
+                        </div>
+                      ))}
+                  </div>
+                ) : (
+                  <p className="text-gray-500 italic">No notes in history yet.</p>
+                )}
+              </div>
+
+              {/* Add New Note - Shown ONLY for Paid Invoices */}
+              <div>
+                <h4 className="text-sm font-medium text-gray-500 mb-2">Add New Note</h4>
+                <textarea
+                  value={newNote}
+                  onChange={(e) => setNewNote(e.target.value)}
+                  rows={3}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none"
+                  placeholder="Add a new note to this invoice..."
+                />
+                <button
+                  onClick={addNote}
+                  disabled={addingNote || !newNote.trim()}
+                  className="mt-3 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 flex items-center gap-2"
+                >
+                  <Plus size={18} />
+                  {addingNote ? 'Adding...' : 'Add Note'}
+                </button>
+              </div>
+            </>
           )}
         </div>
       </div>
