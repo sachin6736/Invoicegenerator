@@ -28,18 +28,18 @@ export async function generateInvoicePDF(invoice) {
       .fontSize(24)
       .font('Helvetica-Bold')
       .fillColor(primaryColor)
-      .text('Autopartsinvoices', 50, y, { align: 'left' });
+      .text('Auto Parts Store', 50, y, { align: 'left' });
 
     // Company Info on the right
     doc
       .fontSize(10)
       .font('Helvetica')
       .fillColor(gray)
-      .text('Autopartsinvoices', 350, y, { align: 'right', width: 200 })
+      .text('Auto Parts Store', 350, y, { align: 'right', width: 200 })
       .text('330 N Brand Blvd, STE 700', 350, doc.y, { align: 'right', width: 200 })
       .text('Glendale, California 91203', 350, doc.y, { align: 'right', width: 200 })
       .text('+1 888-282-7476', 350, doc.y, { align: 'right', width: 200 })
-      .text('contact@autopartsinvoices.xyz', 350, doc.y, { align: 'right', width: 200 });
+      .text('contact@firstusedautoparts.com', 350, doc.y, { align: 'right', width: 200 });
 
     y = doc.y + 50;
 
@@ -63,8 +63,8 @@ export async function generateInvoicePDF(invoice) {
       .font('Helvetica')
       .fontSize(10)
       .fillColor(gray)
-      .text(`Issue Date: ${new Date(invoice.issueDate).toLocaleDateString('en-US')}`, 50, doc.y + 8)
-      .text(`Due Date:   ${new Date(invoice.dueDate).toLocaleDateString('en-US')}`, 50, doc.y + 4);
+      .text(`Issue Date: ${new Date(invoice.issueDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`, 50, doc.y + 8)
+      .text(`Due Date:   ${new Date(invoice.dueDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`, 50, doc.y + 4);
 
     y = doc.y + 40;
 
