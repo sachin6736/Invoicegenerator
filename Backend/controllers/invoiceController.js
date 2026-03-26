@@ -19,7 +19,7 @@ function getResend() {
 export const sendInvoice = async (req, res) => {
   try {
     const data = req.body;
-
+ 
     // 1. Validate required fields
     if (!data.client?.email) {
       return res.status(400).json({ success: false, message: 'Client email is required' });
