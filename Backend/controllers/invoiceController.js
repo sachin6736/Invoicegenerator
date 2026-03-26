@@ -191,3 +191,42 @@ export const getPaidInvoices = async (req, res) => {
     });
   }
 };
+
+
+// controllers/invoiceController.js
+export const addNote = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { note } = req.body;
+
+    if (!note || !note.trim()) {
+      return res.status(400).json({ success: false, message: 'Note cannot be empty' });
+    }
+
+    const invoice = await Invoice.findByIdAndUpdate(
+      id,
+      {
+        $push: {
+          notesHistory: {
+            note: note.trim(),
+            addedAt: new Date()
+          }
+        }
+      },
+      { new: true }
+    );
+
+    if (!invoice) {
+      return res.status(404).json({ success: false, message: 'Invoice not found' });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Note added to history successfully',
+      invoice,
+    });
+  } catch (error) {
+    console.error("Add note error:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
