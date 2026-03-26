@@ -19,8 +19,8 @@ function getResend() {
 export const sendInvoice = async (req, res) => {
   try {
     const data = req.body;
- 
-    // 1. Validate required fields
+
+    // 1. Validation
     if (!data.client?.email) {
       return res.status(400).json({ success: false, message: 'Client email is required' });
     }
@@ -28,10 +28,9 @@ export const sendInvoice = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Valid total amount is required' });
     }
 
-    // 2. Currency is fixed to USD
     const currency = 'USD';
 
-    // 3. Determine next invoice number
+    // Generate Invoice Number
     const lastInvoice = await Invoice.findOne({ invoiceNumber: { $ne: null } })
       .sort({ invoiceNumber: -1 })
       .select('invoiceNumber')
@@ -44,12 +43,11 @@ export const sendInvoice = async (req, res) => {
     }
     const invoiceNumber = `INV-${String(nextNum).padStart(4, '0')}`;
 
-    // 4. Prepare dates
     const issueDate = new Date();
     const dueDate = new Date(issueDate);
-    dueDate.setHours(dueDate.getHours() + 48); // 48 hours from now
+    dueDate.setHours(dueDate.getHours() + 48);
 
-    // 5. Create and save the invoice
+    // Save Invoice
     const invoice = new Invoice({
       ...data,
       invoiceNumber,
@@ -63,7 +61,12 @@ export const sendInvoice = async (req, res) => {
     await invoice.save();
     console.log(`Invoice created: ${invoiceNumber}`);
 
-    // 6. Return the saved invoice (frontend will use it to open Gmail)
+    // Generate PDF
+    const pdfBuffer = await generateInvoicePDF(invoice);
+
+    // Convert to base64
+    const pdfBase64 = pdfBuffer.toString('base64');
+
     res.status(200).json({
       success: true,
       message: 'Invoice created successfully',
@@ -71,7 +74,10 @@ export const sendInvoice = async (req, res) => {
         ...invoice.toObject(),
         dueDate: dueDate.toISOString(),
       },
+      pdfBase64,
+      pdfFilename: `Invoice-${invoiceNumber}.pdf`
     });
+
   } catch (error) {
     console.error('Create invoice error:', error);
     res.status(500).json({

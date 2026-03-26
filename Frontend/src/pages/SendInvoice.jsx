@@ -1,18 +1,17 @@
 // src/pages/SendInvoice.jsx
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { useAuth } from '../context/AuthContext';   // ← Added
+import { useAuth } from '../context/AuthContext';
 
 const API = import.meta.env.VITE_API_URL;
 
 export default function SendInvoice() {
-  const { token } = useAuth();   // ← Get token from AuthContext
+  const { token } = useAuth();
 
   const initialFormData = {
     clientName: '',
     clientEmail: '',
     clientPhone: '',
-    issueDate: new Date().toISOString().slice(0, 10),
     items: [{ description: '', amount: '' }],
     notes: '',
   };
@@ -92,12 +91,11 @@ export default function SendInvoice() {
     };
 
     try {
-      // 1. Save invoice to backend (protected route)
       const res = await fetch(`${API}/Invoice/send`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`   // ← Token added here
+          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify(sendData),
       });
@@ -105,17 +103,22 @@ export default function SendInvoice() {
       const result = await res.json();
 
       if (!res.ok) {
-        if (res.status === 401) {
-          throw new Error('Session expired. Please login again.');
-        }
+        if (res.status === 401) throw new Error('Session expired. Please login again.');
         throw new Error(result.message || 'Failed to create invoice');
       }
 
-      const invoice = result.invoice;
-      const invoiceNumber = invoice.invoiceNumber;
+      const { invoice, pdfBase64, pdfFilename } = result;
       const payNowUrl = `https://www.autopartsinvoices.xyz/pay/${invoice._id}`;
 
-      // 2. Build email content
+      // === AUTO DOWNLOAD PDF ===
+      const link = document.createElement('a');
+      link.href = `data:application/pdf;base64,${pdfBase64}`;
+      link.download = pdfFilename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      // === Prepare Email Body ===
       const companyName = 'Auto Parts Store';
       const amountDue = totalAmount.toFixed(2);
       const dueDateFormatted = new Date(invoice.dueDate).toLocaleDateString('en-US', {
@@ -128,45 +131,64 @@ export default function SendInvoice() {
         .map((item) => `  • ${item.description}: $${Number(item.amount).toFixed(2)}`)
         .join('\n');
 
-      const subject = `Invoice ${invoiceNumber} from ${companyName}`;
+      const subject = `Invoice ${invoice.invoiceNumber} from ${companyName}`;
 
       const body = `
-Dear ${invoice.client.name || 'Customer'},
+Dear ${invoice.client.name || 'Valued Customer'},
 
-You have received a new invoice from ${companyName}.
+Thank you for your business.
 
-Invoice Number: ${invoiceNumber}
-Amount Due:    $${amountDue}
-Due Date:      ${dueDateFormatted}
+Please find your invoice attached as a PDF for your records.
 
-Invoice Items:
+────────────────────────────────────────────
+INVOICE SUMMARY
+────────────────────────────────────────────
+
+Invoice Number     :  ${invoice.invoiceNumber}
+Issue Date         :  ${new Date(invoice.issueDate).toLocaleDateString('en-US', { 
+                        year: 'numeric', 
+                        month: 'long', 
+                        day: 'numeric' 
+                      })}
+Due Date           :  ${dueDateFormatted}
+Amount Due         :  $${amountDue}
+
+────────────────────────────────────────────
+ITEMS
+────────────────────────────────────────────
 ${itemsListText}
 
-Total Due: $${amountDue}
+────────────────────────────────────────────
+TOTAL DUE          :  $${amountDue}
+────────────────────────────────────────────
 
-To complete the payment securely, please visit this link:
+To complete your payment securely, please click the link below:
+
 ${payNowUrl}
 
-You will be redirected to a secure payment page powered by PayPal.
+You will be redirected to PayPal’s secure payment page.
 
-Kindly ensure payment is completed before the due date.
-Questions? Just reply to this email — we're happy to help!
+Kindly ensure the payment is completed by the due date. If you have any questions, feel free to reply to this email.
 
-Thank you 
-${companyName}
-      `.trim();
-
-      // 3. Open Gmail compose
+Best regards,
+Auto Parts Store Team
+`.trim();
+      // Open Gmail Compose
       const encodedSubject = encodeURIComponent(subject);
       const encodedBody = encodeURIComponent(body);
       const toEmail = encodeURIComponent(invoice.client.email);
 
       const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&tf=1&to=${toEmail}&su=${encodedSubject}&body=${encodedBody}`;
 
-      window.open(gmailUrl, '_blank');
+      // Small delay so user sees the download first
+      setTimeout(() => {
+        window.open(gmailUrl, '_blank');
+      }, 700);
 
-      toast.success(`Invoice ${invoiceNumber} created! Gmail compose opened — please review & send.`);
+      toast.success(`Invoice ${invoice.invoiceNumber} created successfully!\nPDF downloaded automatically.\nPlease attach it in Gmail.`);
+
       resetForm();
+
     } catch (err) {
       toast.error(err.message || 'Error creating invoice');
     } finally {
@@ -319,11 +341,11 @@ ${companyName}
             <button
               type="submit"
               disabled={loading}
-              className={`px-10 py-3.5 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition shadow-sm min-w-[180px] ${
+              className={`px-10 py-3.5 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition shadow-sm min-w-[240px] ${
                 loading ? 'opacity-60 cursor-not-allowed' : ''
               }`}
             >
-              {loading ? 'Creating & Opening Gmail...' : 'Send Invoice'}
+              {loading ? 'Creating Invoice...' : 'Create Invoice & Download PDF'}
             </button>
           </div>
         </section>
