@@ -36,10 +36,10 @@ export async function generateInvoicePDF(invoice) {
       .font('Helvetica')
       .fillColor(gray)
       .text('Auto Parts Store', 350, y, { align: 'right', width: 200 })
-      .text('330 N Brand Blvd, STE 700', 350, doc.y, { align: 'right', width: 200 })
-      .text('Glendale, California 91203', 350, doc.y, { align: 'right', width: 200 })
-      .text('+1 888-282-7476', 350, doc.y, { align: 'right', width: 200 })
-      .text('contact@firstusedautoparts.com', 350, doc.y, { align: 'right', width: 200 });
+      // .text('330 N Brand Blvd, STE 700', 350, doc.y, { align: 'right', width: 200 })
+      // .text('Glendale, California 91203', 350, doc.y, { align: 'right', width: 200 })
+      // .text('+1 888-282-7476', 350, doc.y, { align: 'right', width: 200 })
+      // .text('contact@firstusedautoparts.com', 350, doc.y, { align: 'right', width: 200 });
 
     y = doc.y + 50;
 

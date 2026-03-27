@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { format, differenceInCalendarDays } from 'date-fns';
-import { ArrowLeft, Clock, CheckCircle2, AlertCircle, Plus } from 'lucide-react';
+import { ArrowLeft, Clock, CheckCircle2, AlertCircle, Plus, Copy } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const API = import.meta.env.VITE_API_URL;
@@ -18,6 +18,7 @@ export default function InvoiceDetail() {
   const [error, setError] = useState(null);
   const [newNote, setNewNote] = useState('');
   const [addingNote, setAddingNote] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const fetchInvoice = async () => {
     if (!token) {
@@ -54,7 +55,23 @@ export default function InvoiceDetail() {
     }
   };
 
-  // Add new note to notesHistory (only for paid invoices)
+  // Copy Payment Link
+  const copyPaymentLink = () => {
+    if (!invoice?._id) return;
+
+    const paymentLink = `https://www.autopartsinvoices.xyz/pay/${invoice._id}`;
+
+    navigator.clipboard.writeText(paymentLink).then(() => {
+      setCopied(true);
+      toast.success('Payment link copied to clipboard!');
+
+      setTimeout(() => setCopied(false), 2000);
+    }).catch(() => {
+      toast.error('Failed to copy link');
+    });
+  };
+
+  // Add Note
   const addNote = async () => {
     if (!newNote.trim()) {
       toast.error("Please enter a note");
@@ -78,7 +95,7 @@ export default function InvoiceDetail() {
       if (!res.ok) throw new Error(data.message || 'Failed to add note');
 
       setInvoice(data.invoice);
-      setNewNote('');                    // clear input
+      setNewNote('');
       toast.success('Note added successfully!');
     } catch (err) {
       toast.error(err.message || 'Failed to add note');
@@ -105,7 +122,10 @@ export default function InvoiceDetail() {
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-10">
           <h2 className="text-2xl font-semibold text-gray-900 mb-4">Invoice Not Found</h2>
           <p className="text-gray-600 mb-6">{error || 'The requested invoice could not be found.'}</p>
-          <button onClick={() => navigate('/invoices')} className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+          <button 
+            onClick={() => navigate('/invoices')} 
+            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
             Back to Invoices
           </button>
         </div>
@@ -117,6 +137,7 @@ export default function InvoiceDetail() {
   const dueDate = new Date(invoice.dueDate);
   const daysUntilDue = differenceInCalendarDays(dueDate, new Date());
   const isOverdue = daysUntilDue < 0 && invoice.status !== 'paid';
+  const paymentLink = `https://www.autopartsinvoices.xyz/pay/${invoice._id}`;
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -156,8 +177,25 @@ export default function InvoiceDetail() {
         </div>
       </div>
 
-      {/* Main Card */}
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+      {/* Payment Link Section */}
+      <div className="bg-blue-50 border border-blue-100 rounded-2xl p-6 mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <p className="text-sm font-medium text-blue-700 mb-1">Payment Link</p>
+            <p className="text-blue-600 text-sm break-all font-mono">{paymentLink}</p>
+          </div>
+          <button
+            onClick={copyPaymentLink}
+            className="flex items-center gap-2 px-6 py-3 bg-white border border-blue-200 hover:border-blue-300 rounded-2xl text-blue-700 hover:text-blue-800 transition font-medium"
+          >
+            <Copy size={18} />
+            {copied ? 'Copied!' : 'Copy Link'}
+          </button>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
         {/* Client & Dates */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 p-8 border-b border-gray-100">
           <div>
@@ -223,21 +261,15 @@ export default function InvoiceDetail() {
 
         {/* Notes Section */}
         <div className="px-8 pb-8 pt-4 border-t border-gray-100">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-900">Notes</h3>
-          </div>
-
-          {/* General Notes (shown for all invoices) */}
           {invoice.notes && (
             <div className="mb-8">
-              <h4 className="text-sm font-medium text-gray-500 mb-2">Notes/Payment Terms</h4>
+              <h4 className="text-sm font-medium text-gray-500 mb-2">Notes / Payment Terms</h4>
               <div className="bg-gray-50 p-5 rounded-lg border border-gray-200 text-gray-700 whitespace-pre-line">
                 {invoice.notes}
               </div>
             </div>
           )}
 
-          {/* Notes History - Shown ONLY for Paid Invoices */}
           {invoice.status === 'paid' && (
             <>
               <div className="mb-6">
@@ -256,11 +288,10 @@ export default function InvoiceDetail() {
                       ))}
                   </div>
                 ) : (
-                  <p className="text-gray-500 italic">No notes in history yet.</p>
+                  <p className="text-gray-500 italic">No notes added yet.</p>
                 )}
               </div>
 
-              {/* Add New Note - Shown ONLY for Paid Invoices */}
               <div>
                 <h4 className="text-sm font-medium text-gray-500 mb-2">Add New Note</h4>
                 <textarea
