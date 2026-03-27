@@ -52,12 +52,12 @@ export default function PayInvoice() {
           <h1 className="text-5xl mb-6">⚠️</h1>
           <h2 className="text-2xl font-semibold mb-4">Invoice Not Found</h2>
           <p className="text-gray-600 mb-8">{error || 'This payment link is invalid or expired.'}</p>
-          <button
+          {/* <button
             onClick={() => navigate('/')}
             className="px-8 py-3 bg-blue-600 text-white rounded-2xl hover:bg-blue-700 transition font-medium"
           >
             Go to Homepage
-          </button>
+          </button> */}
         </div>
       </div>
     );
@@ -72,9 +72,9 @@ export default function PayInvoice() {
           <p className="text-xl text-gray-600 mb-8">
             Thank you! Invoice <strong>#{invoice.invoiceNumber}</strong> has been paid successfully.
           </p>
-          <button onClick={() => navigate('/')} className="px-8 py-3 bg-green-600 text-white rounded-2xl hover:bg-green-700 transition font-medium">
+          {/* <button onClick={() => navigate('/')} className="px-8 py-3 bg-green-600 text-white rounded-2xl hover:bg-green-700 transition font-medium">
             Back to Home
-          </button>
+          </button> */}
         </div>
       </div>
     );
