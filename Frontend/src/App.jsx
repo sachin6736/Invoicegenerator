@@ -5,7 +5,6 @@ import ProtectedRoute from './components/ProtectedRoute';
 import AppLayout from './components/AppLayout';
 
 import Login from './pages/Login';
-import Register from './pages/Register';
 import SendInvoice from './pages/SendInvoice';
 import Invoices from './pages/Invoices';
 import InvoiceDetail from './pages/InvoiceDetail';
@@ -19,7 +18,6 @@ export default function App() {
       <Routes>
         {/* Public routes */}
         <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
 
         {/* Protected routes with sidebar */}
         <Route element={<ProtectedRoute />}>
