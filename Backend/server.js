@@ -13,6 +13,7 @@ import connectDB from "./config/db.js";
 import invoiceroutes from "./routes/invoiceroutes.js";
 import paypalroutes from "./routes/paypalroutes.js"
 import authRoutes from "./routes/authroutes.js";
+import paypalAccountRoutes from './routes/paypalAccountroutes.js';
 
 connectDB();
 
@@ -41,6 +42,7 @@ app.use(express.json());
 app.use('/auth',authRoutes);
 app.use('/Invoice', invoiceroutes);
 app.use('/Payment', paypalroutes);
+app.use('/settings', paypalAccountRoutes );
 
 const PORT = process.env.PORT || 5000;
 
