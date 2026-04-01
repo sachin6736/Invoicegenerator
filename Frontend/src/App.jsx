@@ -5,12 +5,14 @@ import ProtectedRoute from './components/ProtectedRoute';
 import AppLayout from './components/AppLayout';
 
 import Login from './pages/Login';
+// import Register from './pages/Register';           // ← Added (if you have it)
 import SendInvoice from './pages/SendInvoice';
 import Invoices from './pages/Invoices';
 import InvoiceDetail from './pages/InvoiceDetail';
 import PayInvoice from './pages/PayInvoice';
 import PaymentSuccess from './pages/PaymentSuccess';
 import PaidInvoices from './pages/PaidInvoices';
+import Settings from './pages/Settings';           // ← NEW: Settings page
 
 export default function App() {
   return (
@@ -18,6 +20,7 @@ export default function App() {
       <Routes>
         {/* Public routes */}
         <Route path="/login" element={<Login />} />
+        {/* <Route path="/register" element={<Register />} /> */}
 
         {/* Protected routes with sidebar */}
         <Route element={<ProtectedRoute />}>
@@ -26,11 +29,12 @@ export default function App() {
             <Route path="invoices" element={<Invoices />} />
             <Route path="/invoices/:id" element={<InvoiceDetail />} />
             <Route path="paid-invoices" element={<PaidInvoices />} />
+            <Route path="settings" element={<Settings />} />     {/* ← Added */}
             <Route index element={<SendInvoice />} />
           </Route>
         </Route>
 
-        {/* Standalone public pages */}
+        {/* Standalone public pages (no sidebar) */}
         <Route path="/pay/:id" element={<PayInvoice />} />
         <Route path="/payment-success" element={<PaymentSuccess />} />
 
