@@ -1,19 +1,38 @@
-// controllers/paypalController.js
+/// controllers/paypalController.js
 import paypal from '@paypal/checkout-server-sdk';
 import Invoice from '../Models/Invoice.js';
 import PaypalAccount from '../Models/PaypalAccount.js';
 
-// Helper function to get PayPal client for the current user
+// Helper to get PayPal client using user's default account
+
+// Helper to get PayPal client
 const getPayPalClient = async (userId) => {
-  // Find the user's default PayPal account
-  const account = await PaypalAccount.findOne({ 
+  if (!userId) {
+    throw new Error('User not authenticated');
+  }
+
+  console.log("🔍 Looking for PayPal account for userId:", userId.toString());
+
+  // Try default account first
+  let account = await PaypalAccount.findOne({ 
     userId, 
     isDefault: true 
   });
 
-  if (!account) {
-    throw new Error('No default PayPal account found. Please set one in Settings.');
+  if (account) {
+    console.log("✅ Using DEFAULT account:", account.accountName);
+  } else {
+    // Fallback: get any account for this user
+    console.log("⚠️ No default account. Trying any account for this user...");
+    account = await PaypalAccount.findOne({ userId });
   }
+
+  if (!account) {
+    console.log("❌ No PayPal account found for this userId");
+    throw new Error('No PayPal account found. Please go to Settings and add + set a default account.');
+  }
+
+  console.log(`🚀 Using PayPal Account: ${account.accountName} | Sandbox: ${account.isSandbox} | Default: ${account.isDefault}`);
 
   const environment = account.isSandbox
     ? new paypal.core.SandboxEnvironment(account.clientId, account.secretKey)
@@ -26,7 +45,7 @@ const getPayPalClient = async (userId) => {
 export const createPayPalOrder = async (req, res) => {
   try {
     const { invoiceId } = req.body;
-    const userId = req.userId;   // from authMiddleware
+    const userId = req.userId;
 
     const invoice = await Invoice.findById(invoiceId);
     if (!invoice) {
@@ -37,8 +56,9 @@ export const createPayPalOrder = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Invoice already paid' });
     }
 
-    // Get PayPal client using user's default account
     const client = await getPayPalClient(userId);
+    console.log("client",client);
+    
 
     const request = new paypal.orders.OrdersCreateRequest();
     request.requestBody({
@@ -55,7 +75,6 @@ export const createPayPalOrder = async (req, res) => {
 
     const response = await client.execute(request);
 
-    // Save PayPal Order ID
     invoice.paypalOrderId = response.result.id;
     await invoice.save();
 
@@ -68,19 +87,19 @@ export const createPayPalOrder = async (req, res) => {
     console.error('Create PayPal Order Error:', err);
     res.status(500).json({ 
       success: false, 
-      message: err.message || 'Failed to create PayPal order' 
+      message: err.message 
     });
   }
 };
 
-// Capture PayPal Order
+// Capture PayPal Order (unchanged)
 export const capturePayPalOrder = async (req, res) => {
   try {
     const { orderId } = req.params;
     const userId = req.userId;
 
-    // Get PayPal client
     const client = await getPayPalClient(userId);
+    console.log("client",client);
 
     const request = new paypal.orders.OrdersCaptureRequest(orderId);
     const response = await client.execute(request);

@@ -1,13 +1,34 @@
 import PaypalAccount from '../Models/PaypalAccount.js';
 
 // Add new PayPal account
+// controllers/paypalAccountController.js
 export const addPaypalAccount = async (req, res) => {
   try {
     const { accountName, clientId, secretKey, isSandbox = false } = req.body;
 
-    if (!accountName || !clientId || !secretKey) {
-      return res.status(400).json({ success: false, message: 'All fields are required' });
+    // Basic validation
+    if (!accountName?.trim() || !clientId?.trim() || !secretKey?.trim()) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Account name, Client ID and Secret Key are required' 
+      });
     }
+
+    // Check if an account with the same name already exists for this user
+    const existingAccount = await PaypalAccount.findOne({
+      userId: req.userId,
+      accountName: accountName.trim()
+    });
+
+    if (existingAccount) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'An account with this name already exists' 
+      });
+    }
+
+    // Count existing accounts to decide if this should be default
+    const accountCount = await PaypalAccount.countDocuments({ userId: req.userId });
 
     const newAccount = await PaypalAccount.create({
       userId: req.userId,
@@ -15,7 +36,7 @@ export const addPaypalAccount = async (req, res) => {
       clientId: clientId.trim(),
       secretKey: secretKey.trim(),
       isSandbox,
-      isDefault: false,
+      isDefault: accountCount === 0,   // First account becomes default automatically
     });
 
     res.status(201).json({
@@ -30,10 +51,13 @@ export const addPaypalAccount = async (req, res) => {
       },
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    console.error('Add PayPal Account Error:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to add PayPal account. Please try again.' 
+    });
   }
 };
-
 // Get all accounts (without secretKey)
 export const getPaypalAccounts = async (req, res) => {
   try {
