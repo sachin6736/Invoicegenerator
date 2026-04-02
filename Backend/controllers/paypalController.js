@@ -35,7 +35,7 @@ const getPayPalClientForInvoice = async (invoice) => {
   throw new Error('No PayPal account configured for this invoice. Please contact the business.');
 };
 
-// Create PayPal Order - PUBLIC ROUTE (no auth required)
+// controllers/paypalController.js
 export const createPayPalOrder = async (req, res) => {
   try {
     const { invoiceId } = req.body;
@@ -50,9 +50,8 @@ export const createPayPalOrder = async (req, res) => {
     }
 
     const client = await getPayPalClientForInvoice(invoice);
-    console.log("client",client);
-    
 
+    // Create Order
     const request = new paypal.orders.OrdersCreateRequest();
     request.requestBody({
       intent: 'CAPTURE',
@@ -71,9 +70,11 @@ export const createPayPalOrder = async (req, res) => {
     invoice.paypalOrderId = response.result.id;
     await invoice.save();
 
+    // ✅ Return clientId along with orderId
     res.json({ 
       success: true, 
-      orderId: response.result.id 
+      orderId: response.result.id,
+      clientId: client.environment.clientId   // ← Important
     });
 
   } catch (err) {
