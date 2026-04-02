@@ -1,51 +1,44 @@
-/// controllers/paypalController.js
+// controllers/paypalController.js
 import paypal from '@paypal/checkout-server-sdk';
 import Invoice from '../Models/Invoice.js';
 import PaypalAccount from '../Models/PaypalAccount.js';
 
-// Helper to get PayPal client using user's default account
+const getPayPalClientForInvoice = async (invoice) => {
+  // Try to find the default account of the person who created the invoice
+  if (invoice.createdBy) {
+    const account = await PaypalAccount.findOne({
+      userId: invoice.createdBy,
+      isDefault: true
+    });
 
-// Helper to get PayPal client
-const getPayPalClient = async (userId) => {
-  if (!userId) {
-    throw new Error('User not authenticated');
+    if (account) {
+      console.log(`Using default account: ${account.accountName}`);
+      const env = account.isSandbox
+        ? new paypal.core.SandboxEnvironment(account.clientId, account.secretKey)
+        : new paypal.core.LiveEnvironment(account.clientId, account.secretKey);
+      
+      return new paypal.core.PayPalHttpClient(env);
+    }
   }
 
-  console.log("🔍 Looking for PayPal account for userId:", userId.toString());
-
-  // Try default account first
-  let account = await PaypalAccount.findOne({ 
-    userId, 
-    isDefault: true 
-  });
-
-  if (account) {
-    console.log("✅ Using DEFAULT account:", account.accountName);
-  } else {
-    // Fallback: get any account for this user
-    console.log("⚠️ No default account. Trying any account for this user...");
-    account = await PaypalAccount.findOne({ userId });
+  // Fallback: Use any default account in the system
+  const anyDefault = await PaypalAccount.findOne({ isDefault: true });
+  if (anyDefault) {
+    console.log(`Using system default account: ${anyDefault.accountName}`);
+    const env = anyDefault.isSandbox
+      ? new paypal.core.SandboxEnvironment(anyDefault.clientId, anyDefault.secretKey)
+      : new paypal.core.LiveEnvironment(anyDefault.clientId, anyDefault.secretKey);
+    
+    return new paypal.core.PayPalHttpClient(env);
   }
 
-  if (!account) {
-    console.log("❌ No PayPal account found for this userId");
-    throw new Error('No PayPal account found. Please go to Settings and add + set a default account.');
-  }
-
-  console.log(`🚀 Using PayPal Account: ${account.accountName} | Sandbox: ${account.isSandbox} | Default: ${account.isDefault}`);
-
-  const environment = account.isSandbox
-    ? new paypal.core.SandboxEnvironment(account.clientId, account.secretKey)
-    : new paypal.core.LiveEnvironment(account.clientId, account.secretKey);
-
-  return new paypal.core.PayPalHttpClient(environment);
+  throw new Error('No PayPal account configured for this invoice. Please contact the business.');
 };
 
-// Create PayPal Order
+// Create PayPal Order - PUBLIC ROUTE (no auth required)
 export const createPayPalOrder = async (req, res) => {
   try {
     const { invoiceId } = req.body;
-    const userId = req.userId;
 
     const invoice = await Invoice.findById(invoiceId);
     if (!invoice) {
@@ -56,9 +49,7 @@ export const createPayPalOrder = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Invoice already paid' });
     }
 
-    const client = await getPayPalClient(userId);
-    console.log("client",client);
-    
+    const client = await getPayPalClientForInvoice(invoice);
 
     const request = new paypal.orders.OrdersCreateRequest();
     request.requestBody({
@@ -87,46 +78,41 @@ export const createPayPalOrder = async (req, res) => {
     console.error('Create PayPal Order Error:', err);
     res.status(500).json({ 
       success: false, 
-      message: err.message 
+      message: err.message || 'Failed to create PayPal order' 
     });
   }
 };
 
-// Capture PayPal Order (unchanged)
+// Capture can remain protected if you want
 export const capturePayPalOrder = async (req, res) => {
   try {
     const { orderId } = req.params;
-    const userId = req.userId;
 
-    const client = await getPayPalClient(userId);
-    console.log("client",client);
+    const invoice = await Invoice.findOne({ paypalOrderId: orderId });
+    if (!invoice) {
+      return res.status(404).json({ success: false, message: 'Invoice not found' });
+    }
+
+    const client = await getPayPalClientForInvoice(invoice);
 
     const request = new paypal.orders.OrdersCaptureRequest(orderId);
     const response = await client.execute(request);
 
     const capture = response.result.purchase_units[0].payments.captures[0];
 
-    const invoice = await Invoice.findOneAndUpdate(
+    await Invoice.findOneAndUpdate(
       { paypalOrderId: orderId },
       {
         status: 'paid',
         paidAt: new Date(),
         paypalCaptureId: capture.id,
-      },
-      { new: true }
+      }
     );
 
-    if (!invoice) {
-      return res.status(404).json({ success: false, message: 'Invoice not found' });
-    }
-
-    res.json({ success: true, invoice });
+    res.json({ success: true, message: 'Payment captured successfully' });
 
   } catch (err) {
-    console.error('Capture PayPal Order Error:', err);
-    res.status(500).json({ 
-      success: false, 
-      message: err.message || 'Payment capture failed' 
-    });
+    console.error('Capture Error:', err);
+    res.status(500).json({ success: false, message: err.message });
   }
 };
