@@ -4,20 +4,31 @@ import PaypalAccount from '../Models/PaypalAccount.js';
 // controllers/paypalAccountController.js
 export const addPaypalAccount = async (req, res) => {
   try {
-    const { accountName, clientId, secretKey, isSandbox = false } = req.body;
+    let { accountName, clientId, secretKey, isSandbox = false } = req.body;
 
-    // Basic validation
-    if (!accountName?.trim() || !clientId?.trim() || !secretKey?.trim()) {
+    // ✅ Clean the values properly
+    accountName = accountName?.trim();
+    clientId = clientId?.trim().replace(/\s+/g, '');     // Remove all whitespaces
+    secretKey = secretKey?.trim().replace(/\s+/g, '');
+
+    if (!accountName || !clientId || !secretKey) {
       return res.status(400).json({ 
         success: false, 
         message: 'Account name, Client ID and Secret Key are required' 
       });
     }
 
-    // Check if an account with the same name already exists for this user
+    // Extra validation for length
+    if (clientId.length < 50) {
+      return res.status(400).json({ success: false, message: 'Invalid Client ID' });
+    }
+    if (secretKey.length < 50) {
+      return res.status(400).json({ success: false, message: 'Invalid Secret Key' });
+    }
+
     const existingAccount = await PaypalAccount.findOne({
       userId: req.userId,
-      accountName: accountName.trim()
+      accountName: accountName
     });
 
     if (existingAccount) {
@@ -27,16 +38,15 @@ export const addPaypalAccount = async (req, res) => {
       });
     }
 
-    // Count existing accounts to decide if this should be default
     const accountCount = await PaypalAccount.countDocuments({ userId: req.userId });
 
     const newAccount = await PaypalAccount.create({
       userId: req.userId,
-      accountName: accountName.trim(),
-      clientId: clientId.trim(),
-      secretKey: secretKey.trim(),
+      accountName,
+      clientId,
+      secretKey,
       isSandbox,
-      isDefault: accountCount === 0,   // First account becomes default automatically
+      isDefault: accountCount === 0,
     });
 
     res.status(201).json({
@@ -45,17 +55,14 @@ export const addPaypalAccount = async (req, res) => {
       account: {
         _id: newAccount._id,
         accountName: newAccount.accountName,
-        clientId: newAccount.clientId,
+        clientId: newAccount.clientId.substring(0, 15) + '...', // Safe display
         isSandbox: newAccount.isSandbox,
         isDefault: newAccount.isDefault,
       },
     });
   } catch (error) {
     console.error('Add PayPal Account Error:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Failed to add PayPal account. Please try again.' 
-    });
+    res.status(500).json({ success: false, message: 'Failed to add PayPal account' });
   }
 };
 // Get all accounts (without secretKey)

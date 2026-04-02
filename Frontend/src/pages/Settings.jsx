@@ -1,12 +1,13 @@
-// src/pages/Settings.jsx
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { useAuth } from '../context/AuthContext';
+import { Eye, EyeOff, CheckCircle } from 'lucide-react';
 
 const API = import.meta.env.VITE_API_URL;
 
 export default function Settings() {
   const { token } = useAuth();
+  
   const [accounts, setAccounts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -17,6 +18,8 @@ export default function Settings() {
     secretKey: '',
     isSandbox: false,
   });
+
+  const [showSecretKey, setShowSecretKey] = useState(false);
 
   // Fetch accounts
   const fetchAccounts = async () => {
@@ -42,7 +45,7 @@ export default function Settings() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!formData.accountName || !formData.clientId || !formData.secretKey) {
+    if (!formData.accountName.trim() || !formData.clientId.trim() || !formData.secretKey.trim()) {
       toast.error('All fields are required');
       return;
     }
@@ -63,7 +66,7 @@ export default function Settings() {
 
       if (res.ok) {
         toast.success('PayPal account added successfully!');
-        
+
         // Reset form
         setFormData({
           accountName: '',
@@ -71,14 +74,15 @@ export default function Settings() {
           secretKey: '',
           isSandbox: false,
         });
+        setShowSecretKey(false);
 
-        // Immediately update the list without full refetch
+        // Optimistic update
         setAccounts((prev) => [...prev, data.account]);
       } else {
         toast.error(data.message || 'Failed to add account');
       }
     } catch (err) {
-      toast.error('Failed to add account');
+      toast.error('Failed to add account. Please try again.');
     } finally {
       setSubmitting(false);
     }
@@ -93,13 +97,13 @@ export default function Settings() {
       });
 
       if (res.ok) {
-        toast.success('Default account updated');
-        
-        // Optimistically update UI
+        toast.success('Default account updated successfully');
+
+        // Optimistic UI update
         setAccounts((prev) =>
           prev.map((acc) =>
-            acc._id === id 
-              ? { ...acc, isDefault: true } 
+            acc._id === id
+              ? { ...acc, isDefault: true }
               : { ...acc, isDefault: false }
           )
         );
@@ -107,7 +111,7 @@ export default function Settings() {
         toast.error('Failed to update default account');
       }
     } catch (err) {
-      toast.error('Failed to update default');
+      toast.error('Failed to update default account');
     }
   };
 
@@ -118,6 +122,7 @@ export default function Settings() {
       {/* Add New Account Form */}
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8 mb-10">
         <h2 className="text-xl font-semibold mb-6">Add New PayPal Account</h2>
+
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
             <label className="block text-sm font-medium mb-2">Account Name</label>
@@ -125,7 +130,7 @@ export default function Settings() {
               type="text"
               value={formData.accountName}
               onChange={(e) => setFormData({ ...formData, accountName: e.target.value })}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               placeholder="Main Business Account"
               required
             />
@@ -138,37 +143,55 @@ export default function Settings() {
                 type="text"
                 value={formData.clientId}
                 onChange={(e) => setFormData({ ...formData, clientId: e.target.value })}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                placeholder="Axxxxxxxxxxxxxxxxxxxxxxxx"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+                placeholder="AXxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                spellCheck={false}
+                autoComplete="off"
                 required
               />
             </div>
+
             <div>
               <label className="block text-sm font-medium mb-2">Secret Key</label>
-              <input
-                type="password"
-                value={formData.secretKey}
-                onChange={(e) => setFormData({ ...formData, secretKey: e.target.value })}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                placeholder="Enter your PayPal secret key"
-                required
-              />
+              <div className="relative">
+                <input
+                  type={showSecretKey ? "text" : "password"}
+                  value={formData.secretKey}
+                  onChange={(e) => setFormData({ ...formData, secretKey: e.target.value })}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+                  placeholder="Enter your PayPal secret key"
+                  spellCheck={false}
+                  autoComplete="off"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowSecretKey(!showSecretKey)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                >
+                  {showSecretKey ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
+              </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             <input
               type="checkbox"
+              id="sandbox"
               checked={formData.isSandbox}
               onChange={(e) => setFormData({ ...formData, isSandbox: e.target.checked })}
+              className="w-5 h-5 accent-blue-600"
             />
-            <label className="text-sm">Sandbox / Test Mode</label>
+            <label htmlFor="sandbox" className="text-sm font-medium cursor-pointer">
+              Sandbox / Test Mode
+            </label>
           </div>
 
           <button
             type="submit"
             disabled={submitting}
-            className="px-8 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+            className="w-full md:w-auto px-8 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed font-medium transition"
           >
             {submitting ? 'Adding Account...' : 'Add PayPal Account'}
           </button>
@@ -182,27 +205,35 @@ export default function Settings() {
         {loading ? (
           <p className="text-gray-500">Loading accounts...</p>
         ) : accounts.length === 0 ? (
-          <p className="text-gray-500">No accounts added yet.</p>
+          <p className="text-gray-500 italic">No PayPal accounts added yet.</p>
         ) : (
           <div className="space-y-4">
             {accounts.map((acc) => (
               <div
                 key={acc._id}
-                className={`p-6 rounded-xl border flex justify-between items-center ${
+                className={`p-6 rounded-xl border flex justify-between items-center transition-all ${
                   acc.isDefault ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
                 }`}
               >
-                <div>
-                  <p className="font-semibold">{acc.accountName}</p>
-                  <p className="text-sm text-gray-500">
-                    {acc.clientId.substring(0, 12)}... 
-                    {acc.isSandbox && <span className="ml-2 text-amber-600">(Sandbox)</span>}
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <p className="font-semibold text-lg">{acc.accountName}</p>
+                    {acc.isDefault && <CheckCircle className="text-blue-600" size={20} />}
+                  </div>
+                  <p className="font-mono text-sm text-gray-600 mt-1">
+                    {acc.clientId?.substring(0, 15)}...
                   </p>
+                  {acc.isSandbox && (
+                    <span className="inline-block mt-1 text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded">
+                      Sandbox Mode
+                    </span>
+                  )}
                 </div>
+
                 <button
                   onClick={() => setDefault(acc._id)}
                   disabled={acc.isDefault}
-                  className={`px-5 py-2 rounded-lg text-sm font-medium transition ${
+                  className={`px-6 py-2.5 rounded-lg text-sm font-medium transition ${
                     acc.isDefault
                       ? 'bg-green-100 text-green-700 cursor-default'
                       : 'bg-blue-600 text-white hover:bg-blue-700'
