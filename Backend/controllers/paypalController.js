@@ -50,6 +50,8 @@ export const createPayPalOrder = async (req, res) => {
     }
 
     const client = await getPayPalClientForInvoice(invoice);
+    console.log("client",client);
+    
 
     const request = new paypal.orders.OrdersCreateRequest();
     request.requestBody({
