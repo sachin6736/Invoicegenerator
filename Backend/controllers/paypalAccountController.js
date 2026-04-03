@@ -1,7 +1,8 @@
 import PaypalAccount from '../Models/PaypalAccount.js';
 
-// Add new PayPal account
 // controllers/paypalAccountController.js
+// Add new PayPal account
+
 export const addPaypalAccount = async (req, res) => {
   try {
     let { accountName, clientId, secretKey, isSandbox = false } = req.body;
@@ -65,6 +66,7 @@ export const addPaypalAccount = async (req, res) => {
     res.status(500).json({ success: false, message: 'Failed to add PayPal account' });
   }
 };
+
 // Get all accounts (without secretKey)
 export const getPaypalAccounts = async (req, res) => {
   try {
@@ -96,5 +98,39 @@ export const setDefaultAccount = async (req, res) => {
     res.json({ success: true, message: 'Default account updated', account });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Delete PayPal Account
+export const deletePaypalAccount = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const account = await PaypalAccount.findOne({ 
+      _id: id, 
+      userId: req.userId 
+    });
+
+    if (!account) {
+      return res.status(404).json({ success: false, message: 'Account not found' });
+    }
+
+    // Prevent deleting the default account
+    if (account.isDefault) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Cannot delete default account. Please set another account as default first.' 
+      });
+    }
+
+    await PaypalAccount.findByIdAndDelete(id);
+
+    res.json({ 
+      success: true, 
+      message: 'PayPal account deleted successfully' 
+    });
+  } catch (error) {
+    console.error('Delete PayPal Account Error:', error);
+    res.status(500).json({ success: false, message: 'Failed to delete account' });
   }
 };

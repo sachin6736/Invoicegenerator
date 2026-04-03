@@ -1,7 +1,8 @@
+// src/pages/Settings.jsx
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { useAuth } from '../context/AuthContext';
-import { Eye, EyeOff, CheckCircle } from 'lucide-react';
+import { Eye, EyeOff, CheckCircle, Trash2, X } from 'lucide-react';
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -11,6 +12,7 @@ export default function Settings() {
   const [accounts, setAccounts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
 
   const [formData, setFormData] = useState({
     accountName: '',
@@ -20,6 +22,10 @@ export default function Settings() {
   });
 
   const [showSecretKey, setShowSecretKey] = useState(false);
+
+  // Delete Modal State
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [accountToDelete, setAccountToDelete] = useState(null);
 
   // Fetch accounts
   const fetchAccounts = async () => {
@@ -67,16 +73,9 @@ export default function Settings() {
       if (res.ok) {
         toast.success('PayPal account added successfully!');
 
-        // Reset form
-        setFormData({
-          accountName: '',
-          clientId: '',
-          secretKey: '',
-          isSandbox: false,
-        });
+        setFormData({ accountName: '', clientId: '', secretKey: '', isSandbox: false });
         setShowSecretKey(false);
 
-        // Optimistic update
         setAccounts((prev) => [...prev, data.account]);
       } else {
         toast.error(data.message || 'Failed to add account');
@@ -98,13 +97,9 @@ export default function Settings() {
 
       if (res.ok) {
         toast.success('Default account updated successfully');
-
-        // Optimistic UI update
         setAccounts((prev) =>
           prev.map((acc) =>
-            acc._id === id
-              ? { ...acc, isDefault: true }
-              : { ...acc, isDefault: false }
+            acc._id === id ? { ...acc, isDefault: true } : { ...acc, isDefault: false }
           )
         );
       } else {
@@ -115,9 +110,44 @@ export default function Settings() {
     }
   };
 
+  // Open Delete Confirmation Modal
+  const openDeleteModal = (account) => {
+    setAccountToDelete(account);
+    setShowDeleteModal(true);
+  };
+
+  // Confirm Delete
+  const confirmDelete = async () => {
+    if (!accountToDelete) return;
+
+    setDeletingId(accountToDelete._id);
+    setShowDeleteModal(false);
+
+    try {
+      const res = await fetch(`${API}/settings/${accountToDelete._id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        toast.success('Account deleted successfully');
+        setAccounts((prev) => prev.filter((acc) => acc._id !== accountToDelete._id));
+      } else {
+        toast.error(data.message || 'Failed to delete account');
+      }
+    } catch (err) {
+      toast.error('Failed to delete account');
+    } finally {
+      setDeletingId(null);
+      setAccountToDelete(null);
+    }
+  };
+
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-8">Settings</h1>
+      <h1 className="text-3xl font-bold mb-8">Accounts</h1>
 
       {/* Add New Account Form */}
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8 mb-10">
@@ -230,22 +260,71 @@ export default function Settings() {
                   )}
                 </div>
 
-                <button
-                  onClick={() => setDefault(acc._id)}
-                  disabled={acc.isDefault}
-                  className={`px-6 py-2.5 rounded-lg text-sm font-medium transition ${
-                    acc.isDefault
-                      ? 'bg-green-100 text-green-700 cursor-default'
-                      : 'bg-blue-600 text-white hover:bg-blue-700'
-                  }`}
-                >
-                  {acc.isDefault ? '✓ Default' : 'Set as Default'}
-                </button>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => setDefault(acc._id)}
+                    disabled={acc.isDefault}
+                    className={`px-5 py-2 rounded-lg text-sm font-medium transition ${
+                      acc.isDefault
+                        ? 'bg-green-100 text-green-700 cursor-default'
+                        : 'bg-blue-600 text-white hover:bg-blue-700'
+                    }`}
+                  >
+                    {acc.isDefault ? '✓ Default' : 'Set as Default'}
+                  </button>
+
+                  {!acc.isDefault && (
+                    <button
+                      onClick={() => openDeleteModal(acc)}
+                      disabled={deletingId === acc._id}
+                      className="p-3 text-red-500 hover:bg-red-50 rounded-lg transition disabled:opacity-50"
+                      title="Delete Account"
+                    >
+                      <Trash2 size={20} />
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
           </div>
         )}
       </div>
+
+      {/* Beautiful Delete Confirmation Modal */}
+      {showDeleteModal && accountToDelete && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full overflow-hidden">
+            <div className="p-8">
+              <div className="flex justify-center mb-6">
+                <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
+                  <Trash2 size={32} className="text-red-600" />
+                </div>
+              </div>
+
+              <h3 className="text-2xl font-semibold text-center mb-2">Delete Account</h3>
+              <p className="text-center text-gray-600 mb-8">
+                Are you sure you want to delete <br />
+                <strong>"{accountToDelete.accountName}"</strong>?
+              </p>
+
+              <div className="flex gap-4">
+                <button
+                  onClick={() => setShowDeleteModal(false)}
+                  className="flex-1 py-3.5 border border-gray-300 rounded-2xl font-medium hover:bg-gray-50 transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmDelete}
+                  className="flex-1 py-3.5 bg-red-600 text-white rounded-2xl font-medium hover:bg-red-700 transition"
+                >
+                  Yes, Delete
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
