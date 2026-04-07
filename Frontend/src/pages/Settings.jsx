@@ -42,10 +42,12 @@ export default function Settings() {
       setLoading(false);
     }
   };
-
+   
   useEffect(() => {
     fetchAccounts();
   }, []);
+
+  console.log("PAYPAL ACCOUNTS",accounts);
 
   // Add new account
   const handleSubmit = async (e) => {
