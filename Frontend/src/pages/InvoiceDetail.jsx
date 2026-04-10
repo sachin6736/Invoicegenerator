@@ -55,11 +55,11 @@ export default function InvoiceDetail() {
     }
   };
 
-  // Copy Payment Link
+  // Copy Payment Link - Now Dynamic!
   const copyPaymentLink = () => {
     if (!invoice?._id) return;
 
-    const paymentLink = `https://www.autopartsinvoices.xyz/pay/${invoice._id}`;
+    const paymentLink = `${window.location.origin}/pay/${invoice._id}`;
 
     navigator.clipboard.writeText(paymentLink).then(() => {
       setCopied(true);
@@ -137,7 +137,9 @@ export default function InvoiceDetail() {
   const dueDate = new Date(invoice.dueDate);
   const daysUntilDue = differenceInCalendarDays(dueDate, new Date());
   const isOverdue = daysUntilDue < 0 && invoice.status !== 'paid';
-  const paymentLink = `https://www.autopartsinvoices.xyz/pay/${invoice._id}`;
+
+  // Dynamic Payment Link
+  const paymentLink = `${window.location.origin}/pay/${invoice._id}`;
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -177,7 +179,7 @@ export default function InvoiceDetail() {
         </div>
       </div>
 
-      {/* Payment Link Section */}
+      {/* Payment Link Section - Now Dynamic */}
       <div className="bg-blue-50 border border-blue-100 rounded-2xl p-6 mb-8">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
