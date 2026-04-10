@@ -108,7 +108,7 @@ export default function SendInvoice() {
       }
 
       const { invoice, pdfBase64, pdfFilename } = result;
-      const payNowUrl = `https://www.autopartsinvoices.xyz/pay/${invoice._id}`;
+      const payNowUrl = `${window.location.origin}/pay/${invoice._id}`;
 
       // === AUTO DOWNLOAD PDF ===
       const link = document.createElement('a');
