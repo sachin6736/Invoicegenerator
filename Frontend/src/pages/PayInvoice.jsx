@@ -4,10 +4,17 @@ import { PayPalScriptProvider, PayPalButtons } from '@paypal/react-paypal-js';
 import { toast } from 'sonner';
 
 const API = import.meta.env.VITE_API_URL;
+const PAYYOURINVOICE_ORIGINS = new Set([
+  'https://www.payyourinvoice.xyz',
+  'https://invoicegenerator-n2v7.vercel.app',
+]);
 
 export default function PayInvoice() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const invoiceTitle = PAYYOURINVOICE_ORIGINS.has(window.location.origin)
+    ? 'PayYourInvoice'
+    : 'Auto Parts Store';
 
   const [invoice, setInvoice] = useState(null);
   const [orderId, setOrderId] = useState(null);
@@ -116,7 +123,7 @@ export default function PayInvoice() {
           <div className="p-8 md:p-12 bg-gradient-to-r from-blue-600 to-indigo-600 text-white">
             <div className="flex justify-between items-start">
               <div>
-                <h2 className="text-2xl font-semibold">Auto Parts Store</h2>
+                <h2 className="text-2xl font-semibold">{invoiceTitle}</h2>
               </div>
               <div className="text-right">
                 <p className="text-sm opacity-75">Invoice Number</p>
