@@ -4,7 +4,7 @@ import fs from 'fs';
 import path from 'path';
 const logoPath = path.join(process.cwd(), 'assets', 'logo.png');  // ← adjust this path to where your logo file actually is
 
-export async function generateInvoicePDF(invoice) {
+export async function generateInvoicePDF(invoice, companyName = 'Auto Parts Store') {
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({
       margin: 50,
@@ -28,14 +28,14 @@ export async function generateInvoicePDF(invoice) {
       .fontSize(24)
       .font('Helvetica-Bold')
       .fillColor(primaryColor)
-      .text('Auto Parts Store', 50, y, { align: 'left' });
+      .text(companyName, 50, y, { align: 'left' });
 
     // Company Info on the right
     doc
       .fontSize(10)
       .font('Helvetica')
       .fillColor(gray)
-      .text('Auto Parts Store', 350, y, { align: 'right', width: 200 })
+      .text(companyName, 350, y, { align: 'right', width: 200 })
       // .text('330 N Brand Blvd, STE 700', 350, doc.y, { align: 'right', width: 200 })
       // .text('Glendale, California 91203', 350, doc.y, { align: 'right', width: 200 })
       // .text('+1 888-282-7476', 350, doc.y, { align: 'right', width: 200 })

@@ -18,7 +18,10 @@ function getResend() {
 }
 export const sendInvoice = async (req, res) => {
   try {
-    const data = req.body;
+    const { companyName: requestedCompanyName, ...data } = req.body;
+    const companyName = requestedCompanyName === 'PayYourInvoice'
+      ? 'PayYourInvoice'
+      : 'Auto Parts Store';
 
     // 1. Validation
     if (!data.client?.email) {
@@ -62,7 +65,7 @@ export const sendInvoice = async (req, res) => {
     console.log(`Invoice created: ${invoiceNumber}`);
 
     // Generate PDF
-    const pdfBuffer = await generateInvoicePDF(invoice);
+    const pdfBuffer = await generateInvoicePDF(invoice, companyName);
 
     // Convert to base64
     const pdfBase64 = pdfBuffer.toString('base64');

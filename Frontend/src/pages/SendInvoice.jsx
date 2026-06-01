@@ -95,6 +95,7 @@ export default function SendInvoice() {
       })),
       totalAmount,
       notes: formData.notes?.trim() || undefined,
+      companyName,
     };
 
     try {
