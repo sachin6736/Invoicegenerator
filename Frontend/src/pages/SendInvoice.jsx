@@ -4,9 +4,16 @@ import { toast } from 'sonner';
 import { useAuth } from '../context/AuthContext';
 
 const API = import.meta.env.VITE_API_URL;
+const PAYYOURINVOICE_ORIGINS = new Set([
+  'https://www.payyourinvoice.xyz',
+  'https://invoicegenerator-n2v7.vercel.app',
+]);
 
 export default function SendInvoice() {
   const { token } = useAuth();
+  const companyName = PAYYOURINVOICE_ORIGINS.has(window.location.origin)
+    ? 'PayYourInvoice'
+    : 'Auto Parts Store';
 
   const initialFormData = {
     clientName: '',
@@ -119,7 +126,6 @@ export default function SendInvoice() {
       document.body.removeChild(link);
 
       // === Prepare Email Body ===
-      const companyName = 'Auto Parts Store';
       const amountDue = totalAmount.toFixed(2);
       const dueDateFormatted = new Date(invoice.dueDate).toLocaleDateString('en-US', {
         year: 'numeric',
@@ -171,7 +177,7 @@ You will be redirected to PayPal’s secure payment page.
 Kindly ensure the payment is completed by the due date. If you have any questions, feel free to reply to this email.
 
 Best regards,
-Auto Parts Store Team
+${companyName} Team
 `.trim();
       // Open Gmail Compose
       const encodedSubject = encodeURIComponent(subject);
